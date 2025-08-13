@@ -1,0 +1,348 @@
+Phase 1: Patient Identification & Demographics
+
+START
+├── Patient Search (Hospital Number)
+│   ├── If FOUND → Load existing demographics → Skip to Phase 2
+│   └── If NOT FOUND → Continue to new registration
+│
+├── Basic Demographics
+│   ├── Age (18-120) → Auto-validate adult ED criteria
+│   ├── Sex (M/F)
+│   ├── Hospital Number → Duplicate check
+│   ├── Weight (kg) → **TRIGGER: BMI calculations for all subsequent forms**
+│   └── Mid Arm Circumference → **TRIGGER: Nutritional status indicator**
+│
+└── Occupation Classification
+    ├── Dropdown with 8 categories
+    └── If "Others" → Text field appears
+
+Phase 2: Medical History & Risk Assessment
+Comorbidities Checklist
+├── Each condition selected → **TRIGGERS specific risk calculations**
+│   ├── Diabetes → Flag for perioperative glucose management
+│   ├── Hypertension → Alert for BP target modifications
+│   ├── Ischemic Heart Disease → **TRIGGER: Cardiac risk stratification**
+│   ├── Chronic Renal Disease → **TRIGGER: Fluid management alerts**
+│   ├── Chronic Liver Disease → **TRIGGER: Drug metabolism warnings**
+│   ├── Obstructive Lung Disease → **TRIGGER: Ventilator setting recommendations**
+│   ├── Cerebrovascular Disease → **TRIGGER: ICP monitoring alerts**
+│   ├── Hypothyroidism → Drug interaction warnings
+│   └── Others → Text specification field
+│
+└── **AUTOMATED RISK SCORE**: Comorbidity burden calculation
+
+
+
+
+
+Phase 3: Neurological Assessment (GCS)
+Glasgow Coma Scale
+├── Eye Response (1-4)
+├── Verbal Response (1-5) → **CONDITIONAL LOGIC**
+│   └── If patient is already intubated → Hide verbal component
+│       └── Auto-calculate using: E + M + "T" notation
+├── Motor Response (1-6)
+│
+└── **AUTO-CALCULATION**: Total GCS with interpretation
+    ├── 3-8: "Severe brain injury - ICU alert"
+    ├── 9-12: "Moderate brain injury"
+    ├── 13-15: "Mild brain injury"
+    └── **TRIGGER**: If GCS ≤8 → Automatic neuroprotection protocol alerts
+
+
+Phase 4: Indication-Based Branching (MAJOR DECISION POINT)
+Indication for Intubation → **CRITICAL BRANCHING LOGIC**
+
+├── TRAUMA Branch
+│   ├── Head injury - reduced sensorium
+│   │   └── **TRIGGERS**:
+│   │       ├── ICP monitoring recommendations
+│   │       ├── CT scan priority alert
+│   │       └── Neuroprotection protocol
+│   │
+│   ├── Head injury - Airway threatened
+│   │   └── **TRIGGERS**:
+│   │       ├── C-spine precautions mandatory
+│   │       ├── Video laryngoscopy recommendation
+│   │       └── Surgical airway standby alert
+│   │
+│   ├── Neck/facial trauma
+│   │   └── **TRIGGERS**:
+│   │       ├── Awake intubation consideration
+│   │       ├── ENT/Surgery consultation
+│   │       └── Emergency cricothyrotomy setup
+│   │
+│   ├── Burn/inhalation
+│   │   └── **TRIGGERS**:
+│   │       ├── Early intubation recommendation
+│   │       ├── Airway edema monitoring
+│   │       └── Special ventilator settings
+│   │
+│   ├── Chest trauma
+│   │   └── **TRIGGERS**:
+│   │       ├── Pneumothorax screening
+│   │       ├── Chest tube consideration
+│   │       └── PEEP limitations
+│   │
+│   └── Drowning
+│       └── **TRIGGERS**:
+│           ├── Hypothermia protocol
+│           ├── Pulmonary edema management
+│           └── Neurological monitoring
+
+├── MEDICAL Branch
+│   ├── Respiratory failure
+│   │   └── **TRIGGERS**:
+│   │       ├── ARDS protocol consideration
+│   │       ├── Prone positioning evaluation
+│   │       └── ECMO criteria assessment
+│   │
+│   ├── Airway obstruction
+│   │   └── **TRIGGERS**:
+│   │       ├── Emergency surgical airway prep
+│   │       ├── Heliox therapy consideration
+│   │       └── ENT immediate consultation
+│   │
+│   ├── Anaphylaxis
+│   │   └── **TRIGGERS**:
+│   │       ├── Epinephrine protocol
+│   │       ├── Steroid administration
+│   │       ├── H1/H2 blocker protocol
+│   │       └── Rapid sequence modification
+│   │
+│   ├── Cardiac failure
+│   │   └── **TRIGGERS**:
+│   │       ├── Preload reduction strategies
+│   │       ├── Inotrope preparation
+│   │       └── LVAD/mechanical support consideration
+│   │
+│   ├── Sepsis
+│   │   └── **TRIGGERS**:
+│   │       ├── Sepsis bundle activation
+│   │       ├── Fluid resuscitation protocol
+│   │       ├── Early antibiotic administration
+│   │       └── Vasopressor preparation
+│   │
+│   ├── GI Bleed
+│   │   └── **TRIGGERS**:
+│   │       ├── Blood product preparation
+│   │       ├── Gastroenterology consultation
+│   │       ├── Aspiration precautions
+│   │       └── Rapid sequence with cricoid pressure
+│   │
+│   ├── ICH/Stroke
+│   │   └── **TRIGGERS**:
+│   │       ├── ICP management protocol
+│   │       ├── Blood pressure targets
+│   │       ├── Neurosurgery consultation
+│   │       └── Anticoagulation reversal
+│   │
+│   └── Seizure
+│       └── **TRIGGERS**:
+│           ├── Antiepileptic drug protocol
+│           ├── Status epilepticus management
+│           └── EEG monitoring consideration
+
+└── **AUTOMATED PROTOCOLS**: Each indication triggers specific:
+    ├── Medication recommendations
+    ├── Monitoring requirements
+    ├── Consultation alerts
+    └── Post-intubation care bundles
+
+
+Phase 5: Difficult Airway Prediction
+LEON Score Assessment → **PREDICTIVE BRANCHING**
+
+├── L - Large Tongue → Points: 0/1
+├── E - Thyro-mental Distance → Points: 0/1
+├── O - Obstruction → Points: 0/1
+├── N - Neck mobility → Points: 0/1
+
+└── **AUTO-CALCULATION & BRANCHING**:
+    ├── Score 0-1: Standard intubation approach
+    ├── Score 2-3: **TRIGGERS**:
+    │   ├── Video laryngoscopy recommendation
+    │   ├── Experienced intubator alert
+    │   ├── Backup airway devices preparation
+    │   └── Surgical airway standby
+    └── Score 4: **TRIGGERS**:
+        ├── Awake intubation consideration
+        ├── ENT immediate consultation
+        ├── Emergency cricothyrotomy setup
+        └── Anesthesia backup call
+
+
+Phase 6: Real-Time Monitoring Setup
+Pre-Induction Baseline
+├── Vital Signs Entry
+│   ├── Heart Rate → **AUTO-CALC**: Age-adjusted normal ranges
+│   ├── Systolic/Diastolic BP → **AUTO-CALC**: MAP, Pulse Pressure
+│   ├── SpO2 → **TRIGGER**: If <90% → Preoxygenation protocol
+│   └── **AUTO-CALCULATIONS**:
+│       ├── Shock Index (HR/SBP)
+│       ├── Modified Shock Index
+│       └── **RISK STRATIFICATION**: High-risk if SI >0.9
+
+├── Point-of-Care Ultrasound
+│   ├── EPSS → **TRIGGER**: If >7mm → LV dysfunction protocol
+│   ├── TAPSE → **TRIGGER**: If <17mm → RV dysfunction alert
+│   ├── IVC → **TRIGGER**: Fluid responsiveness prediction
+│   └── Airway Ultrasound → Difficult airway confirmation
+
+└── Laboratory Integration
+    ├── Pre-intubation ABG
+    │   ├── pH → **TRIGGER**: Acidosis management
+    │   ├── PaO2 → **TRIGGER**: Oxygenation strategy
+    │   ├── PaCO2 → **TRIGGER**: Ventilation strategy
+    │   └── Lactate → **TRIGGER**: Shock protocol
+    │
+    └── **AUTOMATED ALERTS**:
+        ├── Severe acidosis (pH <7.2) → Bicarbonate consideration
+        ├── Severe hypoxia (PaO2 <60) → PEEP optimization
+        └── High lactate (>4) → Perfusion monitoring
+
+Phase 7: Medication Selection with Smart Logic
+Pre-Induction Medications → **WEIGHT-BASED CALCULATIONS**
+├── Fentanyl
+│   └── **AUTO-CALC**: 1-3 mcg/kg (based on patient weight)
+├── Dexmedetomidine
+│   └── **AUTO-CALC**: 0.5-1 mcg/kg loading dose
+
+Induction Agents → **CONDITION-BASED RECOMMENDATIONS**
+├── **SMART SELECTION LOGIC**:
+│   ├── If Sepsis/Shock → **RECOMMEND**: Etomidate (0.3 mg/kg)
+│   ├── If Head Injury → **RECOMMEND**: Propofol (1-2 mg/kg)
+│   ├── If Asthma/COPD → **RECOMMEND**: Ketamine (1-2 mg/kg)
+│   ├── If Cardiac Disease → **RECOMMEND**: Etomidate
+│   └── If Hemodynamically Stable → **RECOMMEND**: Propofol
+
+Paralytic Agents → **TIMING & CONTRAINDICATION CHECKS**
+├── Rocuronium (1-1.2 mg/kg)
+│   └── **TRIGGER**: If hyperkalemia risk → Warning alert
+├── Succinylcholine (1-1.5 mg/kg)
+│   └── **CONTRAINDICATION CHECKS**:
+│       ├── Hyperkalemia → Block selection
+│       ├── Malignant hyperthermia history → Block
+│       ├── Neuromuscular disease → Block
+│       └── Burns >24 hours → Block
+
+└── **PUSH-DOSE PRESSORS** → **AUTO-PREPARATION**
+    ├── If Shock Index >0.9 → Auto-prepare epinephrine/phenylephrine
+    └── **DOSAGE CALCULATIONS**: Weight-based ready-to-use doses
+
+
+
+Phase 8: Procedure Timing & Documentation
+Intubation Procedure → **AUTOMATIC TIMING**
+├── **START TIMER**: When "Paralysis Given" button pressed
+├── **REAL-TIME DISPLAY**: Running timer visible to all staff
+├── **MILESTONE ALERTS**:
+│   ├── 30 seconds → "Laryngoscopy should begin"
+│   ├── 60 seconds → "Tube placement target"
+│   ├── 90 seconds → "Consider bag-mask ventilation"
+│   └── 120 seconds → "STOP - Resume ventilation"
+
+├── Intubation Details
+│   ├── Intubator Experience → **TRIGGER**: Quality metrics tracking
+│   ├── Laryngoscope Type → **CORRELATION**: Success rate analysis
+│   ├── Number of Attempts → **TRIGGER**: If >2 → Difficulty alert
+│   └── CL Grading → **CORRELATION**: Difficulty prediction validation
+
+└── **STOP TIMER**: When "Tube Secured" button pressed
+    └── **AUTO-DOCUMENTATION**: Total time calculation
+
+
+
+
+
+Phase 9: Post-Intubation Monitoring Cascade
+**AUTOMATED MONITORING SCHEDULE**
+├── Immediate Post-Intubation
+│   ├── **MANDATORY CHECKS**:
+│   │   ├── Bilateral breath sounds
+│   │   ├── End-tidal CO2 confirmation
+│   │   ├── Chest X-ray order
+│   │   └── Tube position documentation
+│   │
+│   └── **AUTOMATED REMINDERS**: Set at tube confirmation
+
+├── **5-MINUTE INTERVAL** → **AUTOMATIC FORM ACTIVATION**
+│   ├── Vital Signs
+│   │   ├── Heart Rate → **TREND ANALYSIS**: Compare to baseline
+│   │   ├── Blood Pressure → **HYPOTENSION ALERT**: If drop >20%
+│   │   ├── SpO2 → **DESATURATION ALERT**: If <92%
+│   │   └── **AUTO-CALCULATIONS**: Shock indices update
+│   │
+│   ├── Medication Administration
+│   │   ├── Push-dose pressors → **DOSE TRACKING**
+│   │   ├── Vasopressor initiation → **PROTOCOL ACTIVATION**
+│   │   └── Sedation infusion → **TITRATION GUIDELINES**
+│   │
+│   └── **AUTOMATED ALERTS**:
+│       ├── Hypotension → Fluid/pressor recommendations
+│       ├── Tachycardia → Cause investigation prompts
+│       └── Desaturation → Ventilator adjustment alerts
+
+├── **10-MINUTE INTERVAL** → **REPEAT MONITORING**
+│   └── Same parameters with **TREND COMPARISON**
+
+├── **15-MINUTE INTERVAL** → **STABILITY ASSESSMENT**
+│   ├── **HEMODYNAMIC TRENDS**
+│   ├── **VENTILATOR OPTIMIZATION**
+│   └── **SEDATION ADEQUACY**
+
+└── **30-MINUTE INTERVAL** → **FINAL ASSESSMENT**
+    ├── **COMPLICATION SCREENING**
+    ├── **DISPOSITION PLANNING**
+    └── **QUALITY METRICS CALCULATION**
+
+
+
+
+Phase 10: Adverse Event Detection & Response
+**CONTINUOUS MONITORING FOR ADVERSE EVENTS**
+├── **CARDIAC ARREST DETECTION**
+│   ├── **TRIGGERS**: HR <60 with hypotension OR asystole
+│   ├── **AUTOMATED RESPONSE**:
+│   │   ├── CPR protocol activation
+│   │   ├── Code blue alert
+│   │   ├── Medication preparation (epi, atropine)
+│   │   └── Timeline documentation start
+│   │
+│   └── **FOLLOW-UP FORMS**: Resuscitation documentation
+
+├── **HYPOTENSION MANAGEMENT**
+│   ├── **DEFINITION**: SBP <90 OR >20% drop from baseline
+│   ├── **AUTOMATED RESPONSE TREE**:
+│   │   ├── Fluid bolus recommendation (10-20 ml/kg)
+│   │   ├── Push-dose pressor calculation
+│   │   ├── Vasopressor infusion protocols
+│   │   └── Cause investigation prompts
+│   │
+│   └── **ESCALATION TRIGGERS**:
+│       ├── Persistent hypotension >10 minutes
+│       ├── Multi-organ dysfunction signs
+│       └── ICU consultation alerts
+
+├── **FAILED INTUBATION PROTOCOL**
+│   ├── **AUTOMATED BACKUP PLAN**:
+│   │   ├── Bag-mask ventilation
+│   │   ├── Supraglottic airway insertion
+│   │   ├── Surgical airway consideration
+│   │   └── ENT/Anesthesia emergency consultation
+│   │
+│   └── **DOCUMENTATION CASCADE**:
+│       ├── Attempt details
+│       ├── Complications occurred
+│       ├── Alternative airway used
+│       └── Final disposition
+
+└── **OTHER COMPLICATIONS**
+    ├── Pneumothorax → Chest tube protocol
+    ├── Aspiration → Pulmonary toilet protocol
+    ├── Tooth damage → Dental consultation
+    └── Airway injury → ENT emergency consultation
+
+
+
+

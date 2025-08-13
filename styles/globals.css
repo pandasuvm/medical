@@ -1,0 +1,297 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Mobile-first responsive design */
+@layer base {
+  html {
+    /* Prevent zoom on iOS when input is focused */
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+
+  body {
+    /* Smooth scrolling for mobile */
+    -webkit-overflow-scrolling: touch;
+    /* Prevent bounce scrolling on iOS */
+    overscroll-behavior-y: none;
+  }
+}
+
+/* Custom animations for mobile alerts */
+@layer utilities {
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-pulse-critical {
+    animation: pulseCritical 2s infinite;
+  }
+
+  /* Safe area support for mobile devices */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-pt {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Text truncation utilities */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes pulseCritical {
+  0%, 100% {
+    border-color: rgb(239 68 68);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    border-color: rgb(220 38 38);
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+  }
+}
+
+/* Medical form specific styles */
+@layer components {
+  .medical-input {
+    @apply w-full px-4 py-3 text-base border border-gray-300 rounded-lg
+           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+           transition-all duration-200 bg-white;
+  }
+
+  .medical-input-critical {
+    @apply medical-input border-red-300 focus:ring-red-500 bg-red-50 animate-pulse-critical;
+  }
+
+  .medical-radio-option {
+    @apply flex items-start space-x-3 p-3 border border-gray-200 rounded-lg
+           cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-sm;
+  }
+
+  .medical-radio-option-selected {
+    @apply medical-radio-option bg-blue-50 border-blue-300 ring-2 ring-blue-500 ring-offset-1;
+  }
+
+  .medical-radio-option-critical {
+    @apply medical-radio-option border-red-200 hover:bg-red-50;
+  }
+
+  .medical-radio-option-critical-selected {
+    @apply medical-radio-option-critical bg-red-50 border-red-400 ring-2 ring-red-500 ring-offset-1;
+  }
+
+  .quick-value-btn {
+    @apply px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-md
+           hover:bg-blue-200 active:bg-blue-300 transition-colors duration-150
+           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+           touch-manipulation select-none;
+  }
+
+  .alert-critical {
+    @apply bg-red-50 border-l-4 border-red-400 text-red-800 p-4 rounded-r-lg shadow-lg;
+  }
+
+  .alert-warning {
+    @apply bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded-r-lg shadow-lg;
+  }
+
+  .alert-info {
+    @apply bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-4 rounded-r-lg shadow-lg;
+  }
+
+  .alert-success {
+    @apply bg-green-50 border-l-4 border-green-400 text-green-800 p-4 rounded-r-lg shadow-lg;
+  }
+
+  /* Desktop sidebar styling */
+  .desktop-sidebar {
+    @apply w-80 bg-white border-r border-gray-200 flex flex-col h-screen;
+  }
+
+  .desktop-nav-item {
+    @apply w-full flex items-center space-x-3 p-4 rounded-lg text-left transition-all duration-200
+           hover:bg-gray-100 text-gray-700;
+  }
+
+  .desktop-nav-item-active {
+    @apply desktop-nav-item bg-blue-100 text-blue-900 shadow-sm border border-blue-200;
+  }
+
+  .desktop-nav-item-completed {
+    @apply border-l-4 border-green-500;
+  }
+
+  /* Mobile optimizations */
+  .mobile-header {
+    @apply sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm;
+  }
+
+  .mobile-bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-area-pb;
+  }
+
+  .mobile-menu-overlay {
+    @apply fixed inset-0 z-50;
+  }
+
+  .mobile-menu-backdrop {
+    @apply fixed inset-0 bg-black bg-opacity-25;
+  }
+
+  .mobile-menu-content {
+    @apply fixed bottom-0 left-0 right-0 bg-white rounded-t-xl p-4 space-y-2 max-h-96 overflow-y-auto;
+  }
+}
+
+/* Responsive breakpoint adjustments */
+@media (max-width: 640px) {
+  .medical-input {
+    @apply text-lg px-4 py-4; /* Larger touch targets */
+  }
+
+  .quick-value-btn {
+    @apply px-4 py-3 text-base min-w-[44px] min-h-[44px]; /* iOS touch target guidelines */
+  }
+
+  .medical-radio-option {
+    @apply p-4; /* Larger touch area */
+  }
+
+  /* Ensure mobile alerts don't overlap with fixed headers */
+  .mobile-alert-container {
+    @apply top-20; /* Account for mobile header height */
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+  /* Tablet optimizations */
+  .tablet-grid {
+    @apply grid-cols-2;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Desktop optimizations */
+  .desktop-grid {
+    @apply grid-cols-3;
+  }
+
+  /* Hide mobile-specific elements */
+  .mobile-only {
+    @apply hidden;
+  }
+
+  /* Show desktop-specific elements */
+  .desktop-only {
+    @apply flex;
+  }
+}
+
+/* Print styles for PDF generation */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-break {
+    page-break-before: always;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Ensure proper scaling for print */
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+
+  .medical-input {
+    border: 1px solid #000 !important;
+    background: white !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .medical-input {
+    @apply border-2 border-gray-900;
+  }
+
+  .alert-critical {
+    @apply border-l-8 border-red-600;
+  }
+
+  .quick-value-btn {
+    @apply border border-blue-600;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-down,
+  .animate-slide-up,
+  .animate-pulse-critical {
+    animation: none;
+  }
+
+  .transition-all,
+  .transition-colors,
+  .transition-transform {
+    transition: none;
+  }
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: dark) {
+  .dark-mode-support {
+    @apply bg-gray-900 text-white;
+  }
+}
