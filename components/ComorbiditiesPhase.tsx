@@ -180,8 +180,8 @@ export default function ComorbiditiesPhase() {
               rows={3}
               placeholder="Please specify other medical conditions..."
             />
-            {errors.comorbidities?.othersText && (
-              <p className="text-red-500 text-sm mt-1">{errors.comorbidities.othersText.message as string}</p>
+            {typeof errors.comorbidities === 'object' && errors.comorbidities !== null && 'othersText' in errors.comorbidities && (errors.comorbidities as any).othersText && (
+              <p className="text-red-500 text-sm mt-1">{(errors.comorbidities as any).othersText.message as string}</p>
             )}
           </div>
         )}

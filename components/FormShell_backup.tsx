@@ -221,11 +221,18 @@ export default function FormShell() {
       const formData = methods.getValues();
       const pdfGenerator = new MEARPDFGenerator();
 
+      // Match the PDF data structure to FormData and main FormShell
       await pdfGenerator.generatePDF({
-        ...formData,
+        demographics: formData.demographics,
+        comorbidities: formData.comorbidities,
+        gcs: formData.gcs,
+        indication: formData.indication,
+        leonScore: formData.leonScore,
         calculatedValues,
+        monitoring: [],
         alerts,
-        timestamp: new Date()
+        vitals: formData.preInductionVitals,
+        timestamp: new Date(),
       }, {
         includeAlerts: true,
         includeCalculations: true,
@@ -613,7 +620,7 @@ export default function FormShell() {
                   <span>Next</span>
                   <ChevronRightIcon className="h-4 w-4" />
                 </button>
-              }
+              )}
             </div>
           </div>
         </div>

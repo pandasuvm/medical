@@ -55,8 +55,8 @@ export default function IndicationPhase() {
               </div>
             </label>
           </div>
-          {errors.indication?.category && (
-            <p className="text-red-500 text-sm mt-2">{errors.indication.category.message as string}</p>
+          {errors.indication && (
+            <p className="text-red-500 text-sm mt-2">{(errors.indication as any).message || 'Invalid selection'}</p>
           )}
         </div>
 

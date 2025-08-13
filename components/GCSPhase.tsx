@@ -90,8 +90,8 @@ export default function GCSPhase() {
                 </label>
               ))}
             </div>
-            {errors.gcs?.eyeResponse && (
-              <p className="text-red-500 text-sm">{errors.gcs.eyeResponse.message as string}</p>
+            {errors.gcs && (
+              <p className="text-red-500 text-sm">{(errors.gcs as any).message || 'Invalid input'}</p>
             )}
           </div>
 
@@ -124,8 +124,8 @@ export default function GCSPhase() {
                 </p>
               </div>
             )}
-            {errors.gcs?.verbalResponse && (
-              <p className="text-red-500 text-sm">{errors.gcs.verbalResponse.message as string}</p>
+            {errors.gcs && (
+              <p className="text-red-500 text-sm">{(errors.gcs as any).message || 'Invalid input'}</p>
             )}
           </div>
 
@@ -147,8 +147,8 @@ export default function GCSPhase() {
                 </label>
               ))}
             </div>
-            {errors.gcs?.motorResponse && (
-              <p className="text-red-500 text-sm">{errors.gcs.motorResponse.message as string}</p>
+            {errors.gcs && (
+              <p className="text-red-500 text-sm">{(errors.gcs as any).message || 'Invalid input'}</p>
             )}
           </div>
         </div>
