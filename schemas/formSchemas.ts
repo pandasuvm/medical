@@ -2,12 +2,12 @@ import { z } from 'zod';
 
 // Phase 1: Demographics with auto-calculations
 export const demographicsSchema = z.object({
-  age: z.number().min(18, 'Must be adult for ED').max(120, 'Age exceeds maximum'),
+  age: z.string().optional(),
   sex: z.enum(['M','F']),
   hospitalNo: z.string().min(1, 'Hospital number required'),
-  midArmCircumference: z.number().min(10).max(50).optional(),
-  weight: z.number().min(20, 'Weight too low').max(300, 'Weight exceeds maximum'),
-  height: z.number().min(100).max(250).optional(),
+  midArmCircumference: z.string().optional(),
+  weight: z.string().optional(),
+  height: z.string().optional(),
   occupation: z.enum(['Student','Healthcare','Manual','Office','Business','Agriculture','Unemployed','Retired', 'Other']),
   occupationOther: z.string().optional()
 }).refine((data: any) => {
@@ -38,9 +38,9 @@ export const comorbiditySchema = z.object({
 
 // Phase 3: GCS with intubation logic
 export const gcsSchema = z.object({
-  eyeResponse: z.number().min(1).max(4),
-  verbalResponse: z.number().min(1).max(5).nullable(),
-  motorResponse: z.number().min(1).max(6),
+  eyeResponse: z.string().optional(),
+  verbalResponse: z.string().optional().nullable(),
+  motorResponse: z.string().optional(),
   isAlreadyIntubated: z.boolean().default(false)
 }).superRefine((data: any, ctx: any) => {
   if (data.isAlreadyIntubated && data.verbalResponse !== null) {
@@ -115,28 +115,13 @@ export const leonSchema = z.object({
 
 // Enhanced Vital Signs with medical ranges
 export const vitalSignsSchema = z.object({
-  heartRate: z.number()
-    .min(30, 'HR below 30 bpm - verify reading')
-    .max(300, 'HR above 300 bpm - verify reading'),
-  systolicBP: z.number()
-    .min(50, 'SBP below 50 mmHg - critically low')
-    .max(300, 'SBP above 300 mmHg - verify reading'),
-  diastolicBP: z.number()
-    .min(20, 'DBP below 20 mmHg - critically low')
-    .max(200, 'DBP above 200 mmHg - verify reading'),
-  respiratoryRate: z.number()
-    .min(5, 'RR below 5 - verify reading')
-    .max(60, 'RR above 60 - verify reading'),
-  spo2: z.number()
-    .min(30, 'SpO2 below 30% - verify reading')
-    .max(100, 'SpO2 cannot exceed 100%'),
-  temperature: z.number()
-    .min(25, 'Temperature below 25°C - hypothermia alert')
-    .max(45, 'Temperature above 45°C - hyperthermia alert'),
+  heartRate: z.string().optional(),
+  systolicBP: z.string().optional(),
+  diastolicBP: z.string().optional(),
+  respiratoryRate: z.string().optional(),
+  spo2: z.string().optional(),
+  temperature: z.string().optional(),
   timestamp: z.string().optional()
-}).refine((data: any) => data.diastolicBP < data.systolicBP, {
-  message: 'Diastolic BP must be less than Systolic BP',
-  path: ['diastolicBP']
 });
 
 // Point-of-Care Ultrasound
@@ -269,7 +254,7 @@ export const formRootSchema = z.object({
   }).optional(),
 
   // Form state
-  currentPhase: z.enum(['demographics', 'comorbidities', 'gcs', 'indication', 'leon', 'pre_induction', 'procedure', 'monitoring']).default('demographics'),
+  currentPhase: z.enum(['demographics', 'comorbidities', 'gcs', 'indication', 'leon', 'vitals', 'pre_induction', 'procedure', 'monitoring']).default('demographics'),
   isComplete: z.boolean().default(false)
 });
 

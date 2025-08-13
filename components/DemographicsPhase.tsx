@@ -1,14 +1,37 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useFormStore } from '../stores/useFormStore';
+import toast from 'react-hot-toast';
 
 export default function DemographicsPhase() {
-  const { register, watch, formState: { errors } } = useFormContext();
-  const { updateField, calculatedValues } = useFormStore();
+  const { register, watch, setValue, formState: { errors } } = useFormContext();
+  const { calculatedValues, markPhaseComplete } = useFormStore();
 
   const occupation = watch('demographics.occupation');
   const weight = watch('demographics.weight');
   const height = watch('demographics.height');
+  const age = watch('demographics.age');
+  const sex = watch('demographics.sex');
+  const hospitalNo = watch('demographics.hospitalNo');
+
+  // Check if phase is complete and show notification
+  useEffect(() => {
+    const isComplete = age && sex && hospitalNo && weight && occupation && 
+                      (occupation !== 'Other' || watch('demographics.occupationOther'));
+    
+    if (isComplete) {
+      // Debounced completion notification
+      const timer = setTimeout(() => {
+        toast.success('Demographics section completed', {
+          duration: 3000,
+          id: 'demographics-completed'
+        });
+        markPhaseComplete('demographics');
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [age, sex, hospitalNo, weight, occupation, markPhaseComplete, watch]);
 
   return (
     <div className="space-y-6">
@@ -22,17 +45,17 @@ export default function DemographicsPhase() {
               Age (years) *
             </label>
             <input
-              type="number"
-              {...register('demographics.age', {
-                valueAsNumber: true,
-                min: { value: 18, message: 'Must be adult for ED' },
-                max: { value: 120, message: 'Age exceeds maximum' }
-              })}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              {...register('demographics.age')}
+              value={age || ''}
+              onChange={(e) => setValue('demographics.age', e.target.value, { shouldDirty: true, shouldTouch: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="18-120"
             />
-            {errors.demographics?.age && (
-              <p className="text-red-500 text-sm mt-1">{errors.demographics.age.message as string}</p>
+            {(errors.demographics as any)?.age && (
+              <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).age?.message}</p>
             )}
           </div>
 
@@ -43,14 +66,16 @@ export default function DemographicsPhase() {
             </label>
             <select
               {...register('demographics.sex')}
+              value={sex || ''}
+              onChange={(e) => setValue('demographics.sex', e.target.value as any, { shouldDirty: true, shouldTouch: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select sex</option>
               <option value="M">Male</option>
               <option value="F">Female</option>
             </select>
-            {errors.demographics?.sex && (
-              <p className="text-red-500 text-sm mt-1">{errors.demographics.sex.message as string}</p>
+            {(errors.demographics as any)?.sex && (
+              <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).sex?.message}</p>
             )}
           </div>
 
@@ -61,12 +86,15 @@ export default function DemographicsPhase() {
             </label>
             <input
               type="text"
+              autoComplete="off"
               {...register('demographics.hospitalNo')}
+              value={hospitalNo || ''}
+              onChange={(e) => setValue('demographics.hospitalNo', e.target.value, { shouldDirty: true, shouldTouch: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter hospital number"
             />
-            {errors.demographics?.hospitalNo && (
-              <p className="text-red-500 text-sm mt-1">{errors.demographics.hospitalNo.message as string}</p>
+            {(errors.demographics as any)?.hospitalNo && (
+              <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).hospitalNo?.message}</p>
             )}
           </div>
 
@@ -76,17 +104,17 @@ export default function DemographicsPhase() {
               Weight (kg) *
             </label>
             <input
-              type="number"
-              {...register('demographics.weight', {
-                valueAsNumber: true,
-                min: { value: 20, message: 'Weight too low' },
-                max: { value: 300, message: 'Weight exceeds maximum' }
-              })}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*\\.?[0-9]*"
+              {...register('demographics.weight')}
+              value={weight || ''}
+              onChange={(e) => setValue('demographics.weight', e.target.value, { shouldDirty: true, shouldTouch: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="20-300"
             />
-            {errors.demographics?.weight && (
-              <p className="text-red-500 text-sm mt-1">{errors.demographics.weight.message as string}</p>
+            {(errors.demographics as any)?.weight && (
+              <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).weight?.message}</p>
             )}
           </div>
 
@@ -96,17 +124,17 @@ export default function DemographicsPhase() {
               Height (cm)
             </label>
             <input
-              type="number"
-              {...register('demographics.height', {
-                valueAsNumber: true,
-                min: { value: 100, message: 'Height too low' },
-                max: { value: 250, message: 'Height too high' }
-              })}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              {...register('demographics.height')}
+              value={height || ''}
+              onChange={(e) => setValue('demographics.height', e.target.value, { shouldDirty: true, shouldTouch: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="100-250"
             />
-            {errors.demographics?.height && (
-              <p className="text-red-500 text-sm mt-1">{errors.demographics.height.message as string}</p>
+            {(errors.demographics as any)?.height && (
+              <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).height?.message}</p>
             )}
           </div>
 
@@ -116,17 +144,17 @@ export default function DemographicsPhase() {
               Mid Arm Circumference (cm)
             </label>
             <input
-              type="number"
-              {...register('demographics.midArmCircumference', {
-                valueAsNumber: true,
-                min: { value: 10, message: 'Value too low' },
-                max: { value: 50, message: 'Value too high' }
-              })}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*\\.?[0-9]*"
+              {...register('demographics.midArmCircumference')}
+              value={watch('demographics.midArmCircumference') || ''}
+              onChange={(e) => setValue('demographics.midArmCircumference', e.target.value, { shouldDirty: true, shouldTouch: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="10-50"
             />
-            {errors.demographics?.midArmCircumference && (
-              <p className="text-red-500 text-sm mt-1">{errors.demographics.midArmCircumference.message as string}</p>
+            {(errors.demographics as any)?.midArmCircumference && (
+              <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).midArmCircumference?.message}</p>
             )}
           </div>
 
@@ -137,6 +165,8 @@ export default function DemographicsPhase() {
             </label>
             <select
               {...register('demographics.occupation')}
+              value={occupation || ''}
+              onChange={(e) => setValue('demographics.occupation', e.target.value as any, { shouldDirty: true, shouldTouch: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select occupation</option>
@@ -150,8 +180,8 @@ export default function DemographicsPhase() {
               <option value="Retired">Retired</option>
               <option value="Other">Other</option>
             </select>
-            {errors.demographics?.occupation && (
-              <p className="text-red-500 text-sm mt-1">{errors.demographics.occupation.message as string}</p>
+            {(errors.demographics as any)?.occupation && (
+              <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).occupation?.message}</p>
             )}
           </div>
 
@@ -164,11 +194,13 @@ export default function DemographicsPhase() {
               <input
                 type="text"
                 {...register('demographics.occupationOther')}
+                value={watch('demographics.occupationOther') || ''}
+                onChange={(e) => setValue('demographics.occupationOther', e.target.value, { shouldDirty: true, shouldTouch: true })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Please specify"
               />
-              {errors.demographics?.occupationOther && (
-                <p className="text-red-500 text-sm mt-1">{errors.demographics.occupationOther.message as string}</p>
+              {(errors.demographics as any)?.occupationOther && (
+                <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).occupationOther?.message}</p>
               )}
             </div>
           )}

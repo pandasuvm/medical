@@ -1,5 +1,17 @@
 import { Demographics, Comorbidities, GCS, LeonScore, VitalSigns, Indication } from '../schemas/formSchemas';
 
+// Helper function to safely convert string vitals to numbers
+export function normalizeVitalSigns(vitals: VitalSigns) {
+  return {
+    heartRate: vitals.heartRate ? parseFloat(vitals.heartRate.toString()) : undefined,
+    systolicBP: vitals.systolicBP ? parseFloat(vitals.systolicBP.toString()) : undefined,
+    diastolicBP: vitals.diastolicBP ? parseFloat(vitals.diastolicBP.toString()) : undefined,
+    respiratoryRate: vitals.respiratoryRate ? parseFloat(vitals.respiratoryRate.toString()) : undefined,
+    spo2: vitals.spo2 ? parseFloat(vitals.spo2.toString()) : undefined,
+    temperature: vitals.temperature ? parseFloat(vitals.temperature.toString()) : undefined,
+  };
+}
+
 // Basic physiological calculations
 export function calcBMI(weightKg: number, heightCm?: number) {
   if (!weightKg || !heightCm) return null;
@@ -31,9 +43,13 @@ export function calcPulsePressure(sbp: number, dbp: number) {
 export function calcTotalGCS(gcs: Partial<GCS>): number | null {
   if (!gcs.eyeResponse || !gcs.motorResponse) return null;
 
-  const eye = gcs.eyeResponse;
-  const motor = gcs.motorResponse;
-  const verbal = gcs.isAlreadyIntubated ? 1 : (gcs.verbalResponse || 1); // Use 1 for intubated patients
+  const eye = typeof gcs.eyeResponse === 'string' ? parseInt(gcs.eyeResponse) : gcs.eyeResponse;
+  const motor = typeof gcs.motorResponse === 'string' ? parseInt(gcs.motorResponse) : gcs.motorResponse;
+  const verbal = gcs.isAlreadyIntubated ? 1 : 
+    (gcs.verbalResponse ? 
+      (typeof gcs.verbalResponse === 'string' ? parseInt(gcs.verbalResponse) : gcs.verbalResponse) : 1);
+
+  if (isNaN(eye) || isNaN(motor) || isNaN(verbal)) return null;
 
   return eye + verbal + motor;
 }
@@ -168,8 +184,13 @@ export function assessHemodynamicRisk(vitals: VitalSigns): {
   const alerts: string[] = [];
   const recommendations: string[] = [];
 
-  const shockIndex = calcShockIndex(vitals.heartRate, vitals.systolicBP);
-  const map = calcMeanArterialPressure(vitals.systolicBP, vitals.diastolicBP);
+  // Normalize vital signs to numbers
+  const normalVitals = normalizeVitalSigns(vitals);
+
+  const shockIndex = normalVitals.heartRate && normalVitals.systolicBP ? 
+    calcShockIndex(normalVitals.heartRate, normalVitals.systolicBP) : null;
+  const map = normalVitals.systolicBP && normalVitals.diastolicBP ? 
+    calcMeanArterialPressure(normalVitals.systolicBP, normalVitals.diastolicBP) : null;
 
   // Shock index assessment
   if (shockIndex && shockIndex > 0.9) {
@@ -179,7 +200,7 @@ export function assessHemodynamicRisk(vitals: VitalSigns): {
   }
 
   // Blood pressure assessment
-  if (vitals.systolicBP < 90) {
+  if (normalVitals.systolicBP && normalVitals.systolicBP < 90) {
     alerts.push('Hypotension - critical');
     recommendations.push('Immediate vasopressor support');
   }
@@ -190,16 +211,16 @@ export function assessHemodynamicRisk(vitals: VitalSigns): {
   }
 
   // Heart rate assessment
-  if (vitals.heartRate > 100) {
+  if (normalVitals.heartRate && normalVitals.heartRate > 100) {
     alerts.push('Tachycardia - investigate cause');
   }
 
-  if (vitals.heartRate < 60) {
+  if (normalVitals.heartRate && normalVitals.heartRate < 60) {
     alerts.push('Bradycardia - monitor closely');
   }
 
   // Oxygenation assessment
-  if (vitals.spo2 < 90) {
+  if (normalVitals.spo2 && normalVitals.spo2 < 90) {
     alerts.push('Severe hypoxemia - urgent intervention');
     recommendations.push('Preoxygenation protocol');
     recommendations.push('PEEP optimization');
@@ -247,7 +268,11 @@ export function getRecommendedInductionAgent(indication: Indication, vitals?: Vi
   const contraindications: string[] = [];
 
   // Check for shock/sepsis
-  if (indication.medical?.sepsis || (vitals && calcShockIndex(vitals.heartRate, vitals.systolicBP)! > 0.9)) {
+  const normalVitals = vitals ? normalizeVitalSigns(vitals) : null;
+  const shockIndex = normalVitals?.heartRate && normalVitals?.systolicBP ? 
+    calcShockIndex(normalVitals.heartRate, normalVitals.systolicBP) : null;
+  
+  if (indication.medical?.sepsis || (shockIndex && shockIndex > 0.9)) {
     return {
       agent: 'etomidate',
       dose: '0.3 mg/kg',

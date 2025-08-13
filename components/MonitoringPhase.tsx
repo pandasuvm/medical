@@ -131,7 +131,9 @@ export default function MonitoringPhase() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">HR (bpm)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   placeholder="60-100"
                 />
@@ -139,7 +141,9 @@ export default function MonitoringPhase() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">SBP (mmHg)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   placeholder="90-140"
                 />
@@ -147,7 +151,9 @@ export default function MonitoringPhase() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">DBP (mmHg)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   placeholder="60-90"
                 />
@@ -155,7 +161,9 @@ export default function MonitoringPhase() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">SpO2 (%)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   placeholder="95-100"
                 />
@@ -225,16 +233,16 @@ export default function MonitoringPhase() {
           <h4 className="font-medium text-red-800 mb-3">Emergency Actions</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <button className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium">
-              🚨 Cardiac Arrest Protocol
+              Cardiac Arrest Protocol
             </button>
             <button className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 font-medium">
-              ⚠️ Failed Intubation Protocol
+              Failed Intubation Protocol
             </button>
             <button className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 font-medium">
-              💉 Push-Dose Pressors
+              Push-Dose Pressors
             </button>
             <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">
-              🫁 Ventilator Adjustment
+              Ventilator Adjustment
             </button>
           </div>
         </div>

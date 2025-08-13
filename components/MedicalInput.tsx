@@ -55,13 +55,20 @@ const MedicalInput: React.FC<MedicalInputProps> = ({
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = type === 'number' ? parseFloat(e.target.value) || '' : e.target.value;
-    onChange?.(newValue);
-    setShowSuggestions(suggestions.length > 0 && e.target.value.length > 0);
+    // For suggestions
+    if (suggestions.length > 0 && e.target.value.length > 0) {
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+    
+    // Call custom onChange if provided
+    if (onChange) {
+      onChange(e.target.value);
+    }
   };
 
   const handleQuickSelect = (selectedValue: string | number) => {
-    onQuickSelect?.(selectedValue);
     onChange?.(selectedValue);
     setShowSuggestions(false);
   };
@@ -96,7 +103,7 @@ const MedicalInput: React.FC<MedicalInputProps> = ({
       {/* Enhanced Label with Clinical Context */}
       <div className="flex items-center justify-between">
         <label className={`
-          block text-sm font-medium leading-tight flex items-center space-x-2
+          flex items-center space-x-2 text-sm font-medium leading-tight
           ${critical ? 'text-red-700' : 'text-gray-700'}
         `}>
           <span>{label}</span>
@@ -160,19 +167,15 @@ const MedicalInput: React.FC<MedicalInputProps> = ({
         {/* Main Input Field */}
         <div className="relative">
           <input
-            {...register(name, {
-              valueAsNumber: type === 'number',
-              onChange: handleInputChange
-            })}
-            type={type}
-            inputMode={inputMode}
-            pattern={pattern}
+            {...register(name)}
+            type="text"
+            inputMode={type === 'number' ? 'numeric' : (inputMode || 'text')}
+            pattern={type === 'number' ? '[0-9]*\\.?[0-9]*' : pattern}
             autoComplete={autoComplete}
             placeholder={placeholder}
-            value={value || ''}
-            onChange={handleInputChange}
             onFocus={() => setShowSuggestions(suggestions.length > 0)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+            onChange={handleInputChange}
             className={`
               w-full px-4 py-3 text-base border rounded-lg
               focus:outline-none focus:ring-2 focus:ring-offset-1
@@ -225,7 +228,7 @@ const MedicalInput: React.FC<MedicalInputProps> = ({
                 key={index}
                 type="button"
                 onClick={() => {
-                  onChange?.(suggestion);
+                  handleQuickSelect(suggestion);
                   setShowSuggestions(false);
                 }}
                 className="

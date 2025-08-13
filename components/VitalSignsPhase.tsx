@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useFormStore } from '../stores/useFormStore';
-import MedicalInput from './MedicalInput';
 import {
   HeartIcon,
   ExclamationTriangleIcon,
@@ -15,9 +14,10 @@ export default function VitalSignsPhase() {
   const { register, watch, formState: { errors }, setValue } = useFormContext();
   const { calculatedValues, alerts, startTimer, markPhaseComplete, completedPhases } = useFormStore();
   const [clinicalContext, setClinicalContext] = useState<string>('');
+  const [lastToastTime, setLastToastTime] = useState<{[key: string]: number}>({});
 
   const vitals = watch('preInductionVitals') || {};
-  const isPhaseCompleted = completedPhases.includes('vitals');
+  const isPhaseCompleted = completedPhases?.includes('vitals') || false;
 
   // Enhanced vital signs with clinical context
   const vitalSigns = [
@@ -139,11 +139,15 @@ export default function VitalSignsPhase() {
   const getClinicalAssessment = () => {
     if (!vitals.heartRate || !vitals.systolicBP) return null;
 
-    const assessments = [];
+    const assessments: Array<{ type: 'critical' | 'warning'; title: string; message: string; recommendations: string[] }> = [];
+
+    const hr = parseFloat((vitals.heartRate as any)?.toString?.() ?? '');
+    const sbp = parseFloat((vitals.systolicBP as any)?.toString?.() ?? '');
+    const spo2 = vitals.spo2 !== undefined && vitals.spo2 !== '' ? parseFloat((vitals.spo2 as any)?.toString?.() ?? '') : NaN;
 
     // Shock Index Assessment
-    if (vitals.heartRate && vitals.systolicBP) {
-      const shockIndex = vitals.heartRate / vitals.systolicBP;
+    if (!isNaN(hr) && !isNaN(sbp) && sbp > 0) {
+      const shockIndex = hr / sbp;
       if (shockIndex > 0.9) {
         assessments.push({
           type: 'critical',
@@ -155,7 +159,7 @@ export default function VitalSignsPhase() {
     }
 
     // Blood Pressure Assessment
-    if (vitals.systolicBP < 90) {
+    if (!isNaN(sbp) && sbp < 90) {
       assessments.push({
         type: 'critical',
         title: 'Hypotension',
@@ -165,7 +169,7 @@ export default function VitalSignsPhase() {
     }
 
     // Respiratory Assessment
-    if (vitals.spo2 < 90) {
+    if (!isNaN(spo2) && spo2 < 90) {
       assessments.push({
         type: 'critical',
         title: 'Severe Hypoxemia',
@@ -178,30 +182,46 @@ export default function VitalSignsPhase() {
   };
 
   const handleVitalChange = (field: string, value: string | number) => {
-    setValue(`preInductionVitals.${field}`, value, { shouldValidate: true });
+    // Always store as string to satisfy schema (and avoid RHF/Zod type errors)
+    const stringValue = value != null ? value.toString() : '';
+    setValue(`preInductionVitals.${field}`, stringValue, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
 
-    // Provide immediate clinical feedback
-    const numValue = parseFloat(value.toString());
+    // Provide immediate clinical feedback with debouncing
+  const numValue = parseFloat(stringValue);
     if (!isNaN(numValue)) {
       const vitalSign = vitalSigns.find(v => v.key === field);
       if (vitalSign) {
-        const range = vitalSign.normalRange;
-        let status = '';
+        const now = Date.now();
+        const lastToast = lastToastTime[field] || 0;
+        
+        // Only show toast if it's been more than 2 seconds since last toast for this field
+        if (now - lastToast > 2000) {
+          const range = vitalSign.normalRange;
+          let status = '';
 
-        if (range.includes('-')) {
-          const [min, max] = range.split('-').map(v => parseFloat(v));
-          if (numValue < min) status = 'below normal';
-          else if (numValue > max) status = 'above normal';
-          else status = 'normal';
-        } else if (range.startsWith('>')) {
-          const threshold = parseFloat(range.slice(1));
-          status = numValue > threshold ? 'normal' : 'below normal';
-        }
+          if (range.includes('-')) {
+            const [min, max] = range.split('-').map(v => parseFloat(v));
+            if (numValue < min) status = 'below normal';
+            else if (numValue > max) status = 'above normal';
+            else status = 'normal';
+          } else if (range.startsWith('>')) {
+            const threshold = parseFloat(range.slice(1));
+            status = numValue > threshold ? 'normal' : 'below normal';
+          }
 
-        if (status === 'normal') {
-          toast.success(`${vitalSign.label}: ${value} ${vitalSign.unit} - Normal`);
-        } else if (status !== '') {
-          toast.error(`${vitalSign.label}: ${value} ${vitalSign.unit} - ${status}`);
+          if (status === 'normal') {
+            toast.success(`${vitalSign.label}: ${value} ${vitalSign.unit} - Normal`, {
+              id: `vital-${field}`, // Use ID to prevent duplicates
+              duration: 3000
+            });
+          } else if (status !== '') {
+            toast.error(`${vitalSign.label}: ${value} ${vitalSign.unit} - ${status}`, {
+              id: `vital-${field}`, // Use ID to prevent duplicates
+              duration: 3000
+            });
+          }
+          
+          setLastToastTime(prev => ({ ...prev, [field]: now }));
         }
       }
     }
@@ -213,9 +233,15 @@ export default function VitalSignsPhase() {
 
     if (isComplete) {
       markPhaseComplete('vitals');
-      toast.success('Vital signs assessment completed');
+      toast.success('Vital signs assessment completed', {
+        duration: 3000,
+        id: 'vitals-completed'
+      });
     } else {
-      toast.error('Please complete all required vital signs');
+      toast.error('Please complete all required vital signs', {
+        duration: 3000,
+        id: 'vitals-incomplete'
+      });
     }
   };
 
@@ -261,26 +287,44 @@ export default function VitalSignsPhase() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {vitalSigns.map((vital) => (
           <div key={vital.key} className="bg-white border border-gray-200 rounded-lg p-4">
-            <MedicalInput
-              label={vital.label}
-              name={`preInductionVitals.${vital.key}`}
-              type="number"
-              register={register}
-              error={errors.preInductionVitals?.[vital.key as keyof typeof errors.preInductionVitals]}
-              placeholder={`Enter ${vital.label.toLowerCase()}`}
-              unit={vital.unit}
-              normalRange={vital.normalRange}
-              inputMode="numeric"
-              quickValues={vital.quickValues}
-              clinicalHints={vital.clinicalHints}
-              value={vitals[vital.key] || ''}
-              onChange={(value) => handleVitalChange(vital.key, value)}
-              critical={
-                vital.key === 'systolicBP' && vitals[vital.key] < 90 ||
-                vital.key === 'spo2' && vitals[vital.key] < 90 ||
-                vital.key === 'heartRate' && (vitals[vital.key] < 50 || vitals[vital.key] > 120)
-              }
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {vital.label} {vital.unit && `(${vital.unit})`}
+              </label>
+              {vital.normalRange && (
+                <p className="text-xs text-gray-500 mb-2">Normal: {vital.normalRange}</p>
+              )}
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern={vital.key === 'temperature' ? "[0-9]*\\.?[0-9]*" : "[0-9]*"}
+                {...register(`preInductionVitals.${vital.key}`)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={`Enter ${vital.label.toLowerCase()}`}
+                onChange={(e) => handleVitalChange(vital.key, e.target.value)}
+              />
+              {errors.preInductionVitals?.[vital.key as keyof typeof errors.preInductionVitals] && (
+                <p className="text-red-500 text-sm mt-1">
+                  {(errors.preInductionVitals as any)[vital.key]?.message}
+                </p>
+              )}
+              
+              {/* Quick Values */}
+              {vital.quickValues && vital.quickValues.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {vital.quickValues.map((quick, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleVitalChange(vital.key, quick.value.toString())}
+                      className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                    >
+                      {quick.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -294,13 +338,13 @@ export default function VitalSignsPhase() {
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {calculatedValues.map && (
+            {calculatedValues.meanArterialPressure && (
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <div className={`text-2xl font-bold ${
-                  calculatedValues.map < 65 ? 'text-red-600' : 
-                  calculatedValues.map > 100 ? 'text-yellow-600' : 'text-green-600'
+                  calculatedValues.meanArterialPressure < 65 ? 'text-red-600' : 
+                  calculatedValues.meanArterialPressure > 100 ? 'text-yellow-600' : 'text-green-600'
                 }`}>
-                  {calculatedValues.map.toFixed(0)}
+                  {calculatedValues.meanArterialPressure.toFixed(0)}
                 </div>
                 <div className="text-sm text-gray-600">MAP (mmHg)</div>
                 <div className="text-xs text-gray-500">Target: 65-100</div>
@@ -323,7 +367,11 @@ export default function VitalSignsPhase() {
             {vitals.systolicBP && vitals.diastolicBP && (
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">
-                  {vitals.systolicBP - vitals.diastolicBP}
+                  {(() => {
+                    const sbp = parseFloat(vitals.systolicBP as any);
+                    const dbp = parseFloat(vitals.diastolicBP as any);
+                    return isNaN(sbp) || isNaN(dbp) ? '-' : (sbp - dbp);
+                  })()}
                 </div>
                 <div className="text-sm text-gray-600">Pulse Pressure</div>
                 <div className="text-xs text-gray-500">Normal: 30-50</div>

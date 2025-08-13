@@ -10,7 +10,8 @@ import {
   calcPulsePressure,
   calcTotalGCS,
   calcLeonScore,
-  calcComorbidityBurden
+  calcComorbidityBurden,
+  normalizeVitalSigns
 } from '../utils/autoCalculations';
 
 export interface FormState {
@@ -37,6 +38,9 @@ export interface FormState {
   // Monitoring intervals
   nextMonitoringDue: string | null;
   completedIntervals: string[];
+  completedPhases: string[];
+  // Track last computed alert IDs to only surface newly introduced alerts per change
+  lastComputedAlertIds?: string[];
 
   // Actions
   setData: (data: Partial<FormData>) => void;
@@ -47,8 +51,11 @@ export interface FormState {
   updateElapsedTime: () => void;
   addAlert: (alert: ClinicalAlert) => void;
   dismissAlert: (alertId: string) => void;
+  clearAllAlerts: () => void;
+  clearStaleAlerts: () => void;
   activateProtocol: (protocol: ProtocolActivation) => void;
   completeMonitoringInterval: (interval: string) => void;
+  markPhaseComplete: (phase: string) => void;
   calculateValues: () => void;
   saveDraft: () => void;
   loadDraft: () => void;
@@ -67,7 +74,9 @@ const initialState = {
   timerStartTime: null,
   elapsedTime: 0,
   nextMonitoringDue: null,
-  completedIntervals: []
+  completedIntervals: [],
+  completedPhases: [],
+  lastComputedAlertIds: []
 };
 
 export const useFormStore = create<FormState>()(
@@ -78,7 +87,14 @@ export const useFormStore = create<FormState>()(
       set((state) => {
         const updatedData = { ...state.data, ...newData };
         const calculatedValues = calculateAllValues(updatedData);
-        const alerts = generateClinicalAlerts(updatedData as FormData);
+
+        // Compute alerts from current data only
+        const computedAlerts = generateClinicalAlerts(updatedData as FormData);
+        const prevIds = state.lastComputedAlertIds ?? [];
+        const persistentAlerts = state.alerts.filter(a => a.id.startsWith('monitoring-'));
+        // Only surface newly introduced alerts (delta)
+        const deltaAlerts = computedAlerts.filter(a => !prevIds.includes(a.id)).map(a => ({ ...a, timestamp: new Date().toISOString() }));
+        const alerts = [...persistentAlerts, ...deltaAlerts];
         const activeProtocols = getActivatedProtocols(updatedData as FormData);
 
         return {
@@ -86,6 +102,7 @@ export const useFormStore = create<FormState>()(
           calculatedValues,
           alerts,
           activeProtocols,
+          lastComputedAlertIds: computedAlerts.map(a => a.id),
           isDraft: true
         };
       });
@@ -97,7 +114,11 @@ export const useFormStore = create<FormState>()(
         setNestedValue(newData, path, value);
 
         const calculatedValues = calculateAllValues(newData);
-        const alerts = generateClinicalAlerts(newData as FormData);
+        const computedAlerts = generateClinicalAlerts(newData as FormData);
+        const prevIds = state.lastComputedAlertIds ?? [];
+        const persistentAlerts = state.alerts.filter(a => a.id.startsWith('monitoring-'));
+        const deltaAlerts = computedAlerts.filter(a => !prevIds.includes(a.id)).map(a => ({ ...a, timestamp: new Date().toISOString() }));
+        const alerts = [...persistentAlerts, ...deltaAlerts];
         const activeProtocols = getActivatedProtocols(newData as FormData);
 
         return {
@@ -105,13 +126,26 @@ export const useFormStore = create<FormState>()(
           calculatedValues,
           alerts,
           activeProtocols,
+          lastComputedAlertIds: computedAlerts.map(a => a.id),
           isDraft: true
         };
       });
     },
 
     setCurrentPhase: (phase) => {
-      set({ currentPhase: phase });
+      set((state) => {
+        // Clear phase-specific alerts when changing phases
+        const filteredAlerts = state.alerts.filter(alert => 
+          alert.level === 'critical' || // Keep critical alerts
+          !alert.category || // Keep alerts without category
+          alert.category === 'hemodynamic' // Keep hemodynamic alerts as they're always relevant
+        );
+        
+        return {
+          currentPhase: phase,
+          alerts: filteredAlerts
+        };
+      });
 
       // Auto-activate monitoring reminders when entering monitoring phase
       if (phase === 'monitoring' && !get().timerActive) {
@@ -209,15 +243,53 @@ export const useFormStore = create<FormState>()(
     },
 
     addAlert: (alert) => {
-      set((state) => ({
-        alerts: [...state.alerts, alert]
-      }));
+      set((state) => {
+        // Check if alert with same ID already exists
+        const existingIndex = state.alerts.findIndex(existing => existing.id === alert.id);
+        
+        if (existingIndex !== -1) {
+          // Update existing alert
+          const updatedAlerts = [...state.alerts];
+          updatedAlerts[existingIndex] = { ...alert, timestamp: new Date().toISOString() };
+          return { alerts: updatedAlerts };
+        } else {
+          // Add new alert with timestamp
+          return {
+            alerts: [...state.alerts, { ...alert, timestamp: new Date().toISOString() }]
+          };
+        }
+      });
+
+      // Auto-dismiss after 4 seconds for non-critical alerts
+      if (alert.level !== 'critical') {
+        setTimeout(() => {
+          get().dismissAlert(alert.id);
+        }, 3000); // Auto-dismiss after 4 seconds
+      }
     },
 
     dismissAlert: (alertId) => {
       set((state) => ({
         alerts: state.alerts.filter(alert => alert.id !== alertId)
       }));
+    },
+
+    clearAllAlerts: () => {
+      set({ alerts: [] });
+    },
+
+    clearStaleAlerts: () => {
+      set((state) => {
+        const now = Date.now();
+        const fiveMinutesAgo = now - 5 * 60 * 1000; // 5 minutes
+        
+        const freshAlerts = state.alerts.filter(alert => {
+          const alertTime = new Date(alert.timestamp || 0).getTime();
+          return alertTime > fiveMinutesAgo || alert.level === 'critical';
+        });
+        
+        return { alerts: freshAlerts };
+      });
     },
 
     activateProtocol: (protocol) => {
@@ -240,6 +312,17 @@ export const useFormStore = create<FormState>()(
           completedIntervals: updatedIntervals,
           nextMonitoringDue: nextDue
         };
+      });
+    },
+
+    markPhaseComplete: (phase) => {
+      set((state) => {
+        if (!state.completedPhases.includes(phase)) {
+          return {
+            completedPhases: [...state.completedPhases, phase]
+          };
+        }
+        return state;
       });
     },
 
@@ -267,14 +350,21 @@ export const useFormStore = create<FormState>()(
           data: draft.data,
           currentPhase: draft.currentPhase,
           calculatedValues: calculateAllValues(draft.data),
+          alerts: [], // Clear all alerts when loading draft
           isDraft: false
         });
+      } else {
+        // Clear stale alerts even if no draft exists
+        get().clearStaleAlerts();
       }
     },
 
     clearForm: () => {
       localStorage.removeItem('mear-form-draft');
-      set(initialState);
+      set({
+        ...initialState,
+        alerts: [] // Explicitly clear alerts
+      });
     }
   }))
 );
@@ -285,40 +375,67 @@ function calculateAllValues(data: Partial<FormData>): CalculatedValues {
 
   // BMI calculation
   if (data.demographics?.weight && data.demographics?.height) {
-    calculated.bmi = calcBMI(data.demographics.weight, data.demographics.height);
+    const weightNum = parseFloat((data.demographics.weight as any).toString());
+    const heightNum = parseFloat((data.demographics.height as any).toString());
+    const bmiResult = !isNaN(weightNum) && !isNaN(heightNum) ? calcBMI(weightNum, heightNum) : null;
+    if (bmiResult !== null) {
+      calculated.bmi = bmiResult;
+    }
   }
 
   // Vital signs calculations
   if (data.preInductionVitals) {
     const vitals = data.preInductionVitals;
+    const norm = normalizeVitalSigns(vitals as any);
 
-    if (vitals.heartRate && vitals.systolicBP) {
-      calculated.shockIndex = calcShockIndex(vitals.heartRate, vitals.systolicBP);
+    if (norm.heartRate && norm.systolicBP) {
+      const shockResult = calcShockIndex(norm.heartRate, norm.systolicBP);
+      if (shockResult !== null) {
+        calculated.shockIndex = shockResult;
+      }
     }
 
-    if (vitals.systolicBP && vitals.diastolicBP) {
-      calculated.meanArterialPressure = calcMeanArterialPressure(vitals.systolicBP, vitals.diastolicBP);
-      calculated.pulsePressure = calcPulsePressure(vitals.systolicBP, vitals.diastolicBP);
+    if (norm.systolicBP && norm.diastolicBP) {
+      const mapResult = calcMeanArterialPressure(norm.systolicBP, norm.diastolicBP);
+      const ppResult = calcPulsePressure(norm.systolicBP, norm.diastolicBP);
+      if (mapResult !== null) {
+        calculated.meanArterialPressure = mapResult;
+      }
+      if (ppResult !== null) {
+        calculated.pulsePressure = ppResult;
+      }
     }
 
-    if (calculated.meanArterialPressure && vitals.heartRate) {
-      calculated.modifiedShockIndex = calcModifiedShockIndex(vitals.heartRate, calculated.meanArterialPressure);
+    if (calculated.meanArterialPressure && norm.heartRate) {
+      const modShockResult = calcModifiedShockIndex(norm.heartRate, calculated.meanArterialPressure);
+      if (modShockResult !== null) {
+        calculated.modifiedShockIndex = modShockResult;
+      }
     }
   }
 
   // GCS calculation
   if (data.gcs) {
-    calculated.totalGCS = calcTotalGCS(data.gcs);
+    const gcsResult = calcTotalGCS(data.gcs);
+    if (gcsResult !== null) {
+      calculated.totalGCS = gcsResult;
+    }
   }
 
   // LEON score calculation
   if (data.leonScore) {
-    calculated.leonTotalScore = calcLeonScore(data.leonScore);
+    const leonResult = calcLeonScore(data.leonScore);
+    if (leonResult !== null) {
+      calculated.leonTotalScore = leonResult;
+    }
   }
 
   // Comorbidity burden
   if (data.comorbidities) {
-    calculated.comorbidityBurden = calcComorbidityBurden(data.comorbidities);
+    const comorbidityResult = calcComorbidityBurden(data.comorbidities);
+    if (comorbidityResult !== null) {
+      calculated.comorbidityBurden = comorbidityResult;
+    }
   }
 
   return calculated;
@@ -340,7 +457,7 @@ function setNestedValue(obj: any, path: string, value: any) {
   current[keys[keys.length - 1]] = value;
 }
 
-// Auto-save functionality
+// Auto-save functionality and periodic cleanup
 if (typeof window !== 'undefined') {
   setInterval(() => {
     const state = useFormStore.getState();
@@ -348,4 +465,10 @@ if (typeof window !== 'undefined') {
       state.saveDraft();
     }
   }, 30000); // Auto-save every 30 seconds
+
+  // Periodic cleanup of stale alerts
+  setInterval(() => {
+    const state = useFormStore.getState();
+    state.clearStaleAlerts();
+  }, 60000); // Clean up every minute
 }

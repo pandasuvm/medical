@@ -36,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Toaster
           position="top-center"
           toastOptions={{
-            duration: 4000,
+            duration: 3000, // Changed from 4000 to 4000 (4 seconds)
             style: {
               background: '#ffffff',
               color: '#374151',
@@ -47,18 +47,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               padding: '12px 16px'
             },
             success: {
+              duration: 3000, // 4 seconds for success messages
               iconTheme: {
                 primary: '#10b981',
                 secondary: '#ffffff',
               },
             },
             error: {
+              duration: 3000, // 5 seconds for error messages (slightly longer)
               iconTheme: {
                 primary: '#ef4444',
                 secondary: '#ffffff',
               },
             },
             loading: {
+              duration: Infinity, // Loading toasts stay until dismissed
               iconTheme: {
                 primary: '#3b82f6',
                 secondary: '#ffffff',

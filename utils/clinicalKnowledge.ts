@@ -284,7 +284,7 @@ export const checkContraindications = (medication: string, patientData: any) => 
   const contraindications = clinicalKnowledge.contraindications[medication.toLowerCase()];
   if (!contraindications) return [];
   
-  const warnings = [];
+  const warnings: string[] = [];
   // Add logic to check patient data against contraindications
   // This would be expanded based on actual patient conditions
   

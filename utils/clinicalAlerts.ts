@@ -82,58 +82,72 @@ export function generateClinicalAlerts(formData: FormData): ClinicalAlert[] {
 
   // Vital signs alerts
   if (formData.preInductionVitals) {
-    const hemodynamicRisk = assessHemodynamicRisk(formData.preInductionVitals);
-
-    if (hemodynamicRisk.riskLevel !== 'Low') {
-      alerts.push({
-        id: 'hemodynamic-instability',
-        level: hemodynamicRisk.riskLevel === 'High' ? 'critical' : 'warning',
-        title: 'Hemodynamic Instability',
-        message: `${hemodynamicRisk.riskLevel} risk patient`,
-        triggers: hemodynamicRisk.alerts,
-        actions: hemodynamicRisk.recommendations,
-        timestamp,
-        category: 'hemodynamic'
-      });
-    }
-
-    // Specific vital sign alerts
     const vitals = formData.preInductionVitals;
+    
+    // Convert string values to numbers and check if they're valid
+    const heartRate = vitals.heartRate ? parseFloat(vitals.heartRate.toString()) : null;
+    const systolicBP = vitals.systolicBP ? parseFloat(vitals.systolicBP.toString()) : null;
+    const diastolicBP = vitals.diastolicBP ? parseFloat(vitals.diastolicBP.toString()) : null;
+    const spo2 = vitals.spo2 ? parseFloat(vitals.spo2.toString()) : null;
+    const respiratoryRate = vitals.respiratoryRate ? parseFloat(vitals.respiratoryRate.toString()) : null;
+    const temperature = vitals.temperature ? parseFloat(vitals.temperature.toString()) : null;
 
-    if (vitals.spo2 < 90) {
-      alerts.push({
-        id: 'severe-hypoxemia',
-        level: 'critical',
-        title: 'Severe Hypoxemia',
-        message: `SpO2 ${vitals.spo2}% - Urgent intervention required`,
-        triggers: ['spo2_below_90'],
-        actions: [
-          'Immediate preoxygenation',
-          'PEEP optimization',
-          'Consider BiPAP',
-          'Prepare for difficult oxygenation'
-        ],
-        timestamp,
-        category: 'hemodynamic'
-      });
-    }
+    // Only run assessments if we have valid numeric values
+    const hasValidVitals = heartRate !== null || systolicBP !== null || diastolicBP !== null || 
+                          spo2 !== null || respiratoryRate !== null || temperature !== null;
 
-    if (vitals.systolicBP < 90) {
-      alerts.push({
-        id: 'severe-hypotension',
-        level: 'critical',
-        title: 'Severe Hypotension',
-        message: `SBP ${vitals.systolicBP} mmHg - Shock protocol`,
-        triggers: ['sbp_below_90'],
-        actions: [
-          'Prepare push-dose pressors',
-          'Fluid resuscitation',
-          'Vasopressor infusion ready',
-          'Consider etomidate for induction'
-        ],
-        timestamp,
-        category: 'hemodynamic'
-      });
+    if (hasValidVitals) {
+      const hemodynamicRisk = assessHemodynamicRisk(vitals);
+
+      if (hemodynamicRisk.riskLevel !== 'Low') {
+        alerts.push({
+          id: 'hemodynamic-instability',
+          level: hemodynamicRisk.riskLevel === 'High' ? 'critical' : 'warning',
+          title: 'Hemodynamic Instability',
+          message: `${hemodynamicRisk.riskLevel} risk patient`,
+          triggers: hemodynamicRisk.alerts,
+          actions: hemodynamicRisk.recommendations,
+          timestamp,
+          category: 'hemodynamic'
+        });
+      }
+
+      // Specific vital sign alerts - only if values are actually entered
+      if (spo2 !== null && !isNaN(spo2) && spo2 < 90) {
+        alerts.push({
+          id: 'severe-hypoxemia',
+          level: 'critical',
+          title: 'Severe Hypoxemia',
+          message: `SpO2 ${spo2}% - Urgent intervention required`,
+          triggers: ['spo2_below_90'],
+          actions: [
+            'Immediate preoxygenation',
+            'PEEP optimization',
+            'Consider BiPAP',
+            'Prepare for difficult oxygenation'
+          ],
+          timestamp,
+          category: 'hemodynamic'
+        });
+      }
+
+      if (systolicBP !== null && !isNaN(systolicBP) && systolicBP < 90) {
+        alerts.push({
+          id: 'severe-hypotension',
+          level: 'critical',
+          title: 'Severe Hypotension',
+          message: `SBP ${systolicBP} mmHg - Shock protocol`,
+          triggers: ['sbp_below_90'],
+          actions: [
+            'Prepare push-dose pressors',
+            'Fluid resuscitation',
+            'Vasopressor infusion ready',
+            'Consider etomidate for induction'
+          ],
+          timestamp,
+          category: 'hemodynamic'
+        });
+      }
     }
   }
 
@@ -394,8 +408,12 @@ export function checkMonitoringAlerts(vitals: VitalSigns, timePoint: string): Cl
   const alerts: ClinicalAlert[] = [];
   const timestamp = new Date().toISOString();
 
+  // Convert string vitals to numbers for comparison
+  const systolicBP = vitals.systolicBP ? parseFloat(vitals.systolicBP.toString()) : null;
+  const spo2 = vitals.spo2 ? parseFloat(vitals.spo2.toString()) : null;
+
   // Post-intubation hypotension
-  if (timePoint.includes('post_') && vitals.systolicBP < 90) {
+  if (timePoint.includes('post_') && systolicBP && systolicBP < 90) {
     alerts.push({
       id: 'post-intubation-hypotension',
       level: 'critical',
@@ -414,12 +432,12 @@ export function checkMonitoringAlerts(vitals: VitalSigns, timePoint: string): Cl
   }
 
   // Desaturation
-  if (vitals.spo2 < 92) {
+  if (spo2 && spo2 < 92) {
     alerts.push({
       id: 'desaturation',
       level: 'warning',
       title: 'Desaturation Alert',
-      message: `SpO2 ${vitals.spo2}% - Check ventilator settings`,
+      message: `SpO2 ${spo2}% - Check ventilator settings`,
       triggers: ['desaturation'],
       actions: [
         'Increase FiO2',

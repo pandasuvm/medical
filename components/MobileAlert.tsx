@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { XMarkIcon, ExclamationTriangleIcon, InformationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { ExclamationTriangleIcon as ExclamationTriangleSolid } from '@heroicons/react/24/solid';
 
@@ -10,6 +10,7 @@ interface Alert {
   actions?: string[];
   timestamp?: Date;
   autoHide?: boolean;
+  level?: 'critical' | 'warning' | 'info';
 }
 
 interface MobileAlertProps {
@@ -18,6 +19,23 @@ interface MobileAlertProps {
 }
 
 const MobileAlert: React.FC<MobileAlertProps> = ({ alerts, onDismiss }) => {
+  // Auto-dismiss non-critical alerts after 4 seconds
+  useEffect(() => {
+    const timers: NodeJS.Timeout[] = [];
+
+    alerts.forEach((alert) => {
+      if (alert.level !== 'critical' && alert.type !== 'critical') {
+        const timer = setTimeout(() => {
+          onDismiss(alert.id);
+        }, 3000); // Changed from 10000 to 4000 (4 seconds)
+        timers.push(timer);
+      }
+    });
+
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+    };
+  }, [alerts, onDismiss]);
   const getAlertIcon = (type: Alert['type']) => {
     switch (type) {
       case 'critical':
@@ -49,7 +67,7 @@ const MobileAlert: React.FC<MobileAlertProps> = ({ alerts, onDismiss }) => {
   return (
     <>
       {/* Desktop Alert Container */}
-      <div className="hidden lg:block fixed top-4 right-4 z-50 space-y-3 max-w-md">
+  <div className="hidden lg:block fixed top-4 right-4 z-50 space-y-3 max-w-md pointer-events-none">
         {alerts.map((alert) => (
           <div
             key={alert.id}
@@ -58,7 +76,7 @@ const MobileAlert: React.FC<MobileAlertProps> = ({ alerts, onDismiss }) => {
               ${getAlertStyles(alert.type)}
               transform transition-all duration-300 ease-in-out
               animate-slide-down max-w-sm
-            `}
+    pointer-events-auto`}
           >
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-3 flex-1 min-w-0">
@@ -90,7 +108,7 @@ const MobileAlert: React.FC<MobileAlertProps> = ({ alerts, onDismiss }) => {
               </div>
               <button
                 onClick={() => onDismiss(alert.id)}
-                className="ml-3 p-1 rounded-full hover:bg-black hover:bg-opacity-10 transition-colors flex-shrink-0"
+                className="ml-3 p-1 rounded-full hover:bg-black hover:bg-opacity-10 transition-colors flex-shrink-0 pointer-events-auto"
                 aria-label="Dismiss alert"
               >
                 <XMarkIcon className="h-4 w-4" />
@@ -101,7 +119,7 @@ const MobileAlert: React.FC<MobileAlertProps> = ({ alerts, onDismiss }) => {
       </div>
 
       {/* Mobile Alert Container - Adjusted positioning */}
-      <div className="lg:hidden fixed top-16 left-2 right-2 z-50 space-y-2">
+  <div className="lg:hidden fixed top-16 left-2 right-2 z-50 space-y-2 pointer-events-none">
         {alerts.map((alert) => (
           <div
             key={alert.id}
@@ -110,7 +128,7 @@ const MobileAlert: React.FC<MobileAlertProps> = ({ alerts, onDismiss }) => {
               ${getAlertStyles(alert.type)}
               transform transition-all duration-300 ease-in-out
               animate-slide-down
-            `}
+    pointer-events-auto`}
           >
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-2 flex-1 min-w-0">
@@ -147,7 +165,7 @@ const MobileAlert: React.FC<MobileAlertProps> = ({ alerts, onDismiss }) => {
               </div>
               <button
                 onClick={() => onDismiss(alert.id)}
-                className="ml-2 p-1 rounded-full hover:bg-black hover:bg-opacity-10 transition-colors flex-shrink-0"
+                className="ml-2 p-1 rounded-full hover:bg-black hover:bg-opacity-10 transition-colors flex-shrink-0 pointer-events-auto"
                 aria-label="Dismiss alert"
               >
                 <XMarkIcon className="h-3 w-3" />
