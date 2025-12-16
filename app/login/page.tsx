@@ -21,29 +21,40 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    // Simple validation for admin credentials
-    if (formData.username !== 'admin' || formData.password !== 'admin@123') {
-      setError('Invalid username or password. Use: admin / admin@123');
-      setIsLoading(false);
-      return;
-    }
-
-    // Simulate API call
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      const email = formData.username.includes('@')
+        ? formData.username
+        : `${formData.username}@mear.local`;
+
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: formData.password })
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.message || 'Invalid credentials');
+        setIsLoading(false);
+        return;
+      }
+
+      const json = await res.json();
+
       localStorage.setItem('medical_auth', JSON.stringify({
-        user: formData.username,
+        user: json.user?.email || email,
         role: formData.role,
+        token: json.token,
         timestamp: Date.now()
       }));
-      router.push('/form');
+      router.push('/dashboard');
     } catch (err) {
       setError('Login failed. Please try again.');
     } finally {
@@ -209,7 +220,7 @@ export default function LoginPage() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="text-sm font-medium text-blue-900 mb-2">Demo Credentials:</h3>
               <p className="text-sm text-blue-700">
-                <span className="font-medium">Username:</span> admin<br/>
+                <span className="font-medium">Email:</span> admin@mear.local<br/>
                 <span className="font-medium">Password:</span> admin@123
               </p>
             </div>

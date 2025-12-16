@@ -1,12 +1,13 @@
 import React from 'react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, Controller } from 'react-hook-form';
 import { useFormStore } from '../stores/useFormStore';
 
 export default function LeonScorePhase() {
-  const { register, watch, formState: { errors } } = useFormContext();
+  const { register, watch, control, formState: { errors } } = useFormContext();
   const { calculatedValues, alerts } = useFormStore();
 
   const leonValues = watch('leonScore');
+  const airwayStatus = watch('airwayStatus');
 
   // Filter LEON/airway-related alerts
   const airwayAlerts = alerts.filter(alert => alert.category === 'airway');
@@ -54,10 +55,49 @@ export default function LeonScorePhase() {
   return (
     <div className="space-y-6">
       <div className="bg-indigo-50 p-4 rounded-lg">
-        <h2 className="text-xl font-semibold text-indigo-900 mb-4">Phase 5: LEON Score - Difficult Airway Prediction</h2>
+        <h2 className="text-xl font-semibold text-indigo-900 mb-4">Phase 5: Airway Assessment & LEON Score</h2>
         <p className="text-indigo-700 mb-4">
-          Assessment tool to predict difficult airway. Score ≥2 triggers enhanced preparation protocols.
+          Pre-intubation airway status and LEON score to predict difficult airway. Score ≥2 triggers enhanced preparation protocols.
         </p>
+
+        {/* Pre-intubation Airway Status */}
+        <div className="mb-6 bg-white p-4 rounded-lg border border-indigo-200">
+          <h3 className="font-medium text-gray-900 mb-3">Pre-intubation Airway Status</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <label className="flex items-start space-x-2">
+              <input
+                type="checkbox"
+                {...register('airwayStatus.failureToMaintainProtectAirway')}
+                className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded"
+              />
+              <span>Failure to maintain or protect airway</span>
+            </label>
+            <label className="flex items-start space-x-2">
+              <input
+                type="checkbox"
+                {...register('airwayStatus.failureOfVentilationOxygenation')}
+                className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded"
+              />
+              <span>Failure of ventilation / oxygenation</span>
+            </label>
+            <label className="flex items-start space-x-2">
+              <input
+                type="checkbox"
+                {...register('airwayStatus.deteriorationAnticipated')}
+                className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded"
+              />
+              <span>Deterioration anticipated</span>
+            </label>
+            <label className="flex items-start space-x-2">
+              <input
+                type="checkbox"
+                {...register('airwayStatus.predictorForDifficultAirway')}
+                className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded"
+              />
+              <span>Predictor for difficult airway (Y/N)</span>
+            </label>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Large Tongue */}
@@ -66,30 +106,44 @@ export default function LeonScorePhase() {
             <p className="text-sm text-gray-600 mb-3">
               Assess relative tongue size compared to oral cavity
             </p>
-            <div className="space-y-2">
-              <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
-                <input
-                  type="radio"
-                  {...register('leonScore.largeTongue', { valueAsNumber: true })}
-                  value={0}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm">
-                  <span className="font-medium">0:</span> Normal tongue size
-                </span>
-              </label>
-              <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
-                <input
-                  type="radio"
-                  {...register('leonScore.largeTongue', { valueAsNumber: true })}
-                  value={1}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm">
-                  <span className="font-medium">1:</span> Large tongue (fills oral cavity)
-                </span>
-              </label>
-            </div>
+            <Controller
+              name="leonScore.largeTongue"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={field.name}
+                      value="0"
+                      checked={Number(field.value) === 0}
+                      onChange={() => field.onChange(0)}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">0:</span> Normal tongue size
+                    </span>
+                  </label>
+                  <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={field.name}
+                      value="1"
+                      checked={Number(field.value) === 1}
+                      onChange={() => field.onChange(1)}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">1:</span> Large tongue (fills oral cavity)
+                    </span>
+                  </label>
+                </div>
+              )}
+            />
             {(errors.leonScore as any)?.largeTongue && (
               <p className="text-red-500 text-sm mt-1">{(errors.leonScore as any).largeTongue.message}</p>
             )}
@@ -101,30 +155,44 @@ export default function LeonScorePhase() {
             <p className="text-sm text-gray-600 mb-3">
               Distance from thyroid cartilage to mental symphysis
             </p>
-            <div className="space-y-2">
-              <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
-                <input
-                  type="radio"
-                  {...register('leonScore.thyroMentalDistance', { valueAsNumber: true })}
-                  value={0}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm">
-                  <span className="font-medium">0:</span> ≥3 finger breadths (&gt;6.5 cm)
-                </span>
-              </label>
-              <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
-                <input
-                  type="radio"
-                  {...register('leonScore.thyroMentalDistance', { valueAsNumber: true })}
-                  value={1}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm">
-                  <span className="font-medium">1:</span> &lt;3 finger breadths (&lt;6.5 cm)
-                </span>
-              </label>
-            </div>
+            <Controller
+              name="leonScore.thyroMentalDistance"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={field.name}
+                      value="0"
+                      checked={Number(field.value) === 0}
+                      onChange={() => field.onChange(0)}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">0:</span> ≥3 finger breadths (&gt;6.5 cm)
+                    </span>
+                  </label>
+                  <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={field.name}
+                      value="1"
+                      checked={Number(field.value) === 1}
+                      onChange={() => field.onChange(1)}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">1:</span> &lt;3 finger breadths (&lt;6.5 cm)
+                    </span>
+                  </label>
+                </div>
+              )}
+            />
             {(errors.leonScore as any)?.thyroMentalDistance && (
               <p className="text-red-500 text-sm mt-1">{(errors.leonScore as any).thyroMentalDistance.message}</p>
             )}
@@ -136,30 +204,44 @@ export default function LeonScorePhase() {
             <p className="text-sm text-gray-600 mb-3">
               Upper airway obstruction or abnormal anatomy
             </p>
-            <div className="space-y-2">
-              <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
-                <input
-                  type="radio"
-                  {...register('leonScore.obstruction', { valueAsNumber: true })}
-                  value={0}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm">
-                  <span className="font-medium">0:</span> No obstruction/normal anatomy
-                </span>
-              </label>
-              <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
-                <input
-                  type="radio"
-                  {...register('leonScore.obstruction', { valueAsNumber: true })}
-                  value={1}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm">
-                  <span className="font-medium">1:</span> Obstruction present (swelling, mass, blood)
-                </span>
-              </label>
-            </div>
+            <Controller
+              name="leonScore.obstruction"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={field.name}
+                      value="0"
+                      checked={Number(field.value) === 0}
+                      onChange={() => field.onChange(0)}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">0:</span> No obstruction/normal anatomy
+                    </span>
+                  </label>
+                  <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={field.name}
+                      value="1"
+                      checked={Number(field.value) === 1}
+                      onChange={() => field.onChange(1)}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">1:</span> Obstruction present (swelling, mass, blood)
+                    </span>
+                  </label>
+                </div>
+              )}
+            />
             {(errors.leonScore as any)?.obstruction && (
               <p className="text-red-500 text-sm mt-1">{(errors.leonScore as any).obstruction.message}</p>
             )}
@@ -171,30 +253,44 @@ export default function LeonScorePhase() {
             <p className="text-sm text-gray-600 mb-3">
               Cervical spine extension ability
             </p>
-            <div className="space-y-2">
-              <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
-                <input
-                  type="radio"
-                  {...register('leonScore.neckMobility', { valueAsNumber: true })}
-                  value={0}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm">
-                  <span className="font-medium">0:</span> Normal neck extension
-                </span>
-              </label>
-              <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
-                <input
-                  type="radio"
-                  {...register('leonScore.neckMobility', { valueAsNumber: true })}
-                  value={1}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm">
-                  <span className="font-medium">1:</span> Limited neck extension
-                </span>
-              </label>
-            </div>
+            <Controller
+              name="leonScore.neckMobility"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={field.name}
+                      value="0"
+                      checked={Number(field.value) === 0}
+                      onChange={() => field.onChange(0)}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">0:</span> Normal neck extension
+                    </span>
+                  </label>
+                  <label className="flex items-center space-x-3 p-2 border rounded hover:bg-indigo-25 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={field.name}
+                      value="1"
+                      checked={Number(field.value) === 1}
+                      onChange={() => field.onChange(1)}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">1:</span> Limited neck extension
+                    </span>
+                  </label>
+                </div>
+              )}
+            />
             {(errors.leonScore as any)?.neckMobility && (
               <p className="text-red-500 text-sm mt-1">{(errors.leonScore as any).neckMobility.message}</p>
             )}

@@ -80,7 +80,7 @@ export default function GCSPhase() {
                 <label key={score} className="flex items-center space-x-3 p-2 border rounded hover:bg-purple-25 cursor-pointer">
                   <input
                     type="radio"
-                    {...register('gcs.eyeResponse', { valueAsNumber: true })}
+                    {...register('gcs.eyeResponse')}
                     value={score}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500"
                   />
@@ -107,7 +107,7 @@ export default function GCSPhase() {
                   <label key={score} className="flex items-center space-x-3 p-2 border rounded hover:bg-purple-25 cursor-pointer">
                     <input
                       type="radio"
-                      {...register('gcs.verbalResponse', { valueAsNumber: true })}
+                      {...register('gcs.verbalResponse')}
                       value={score}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500"
                     />
@@ -137,7 +137,7 @@ export default function GCSPhase() {
                 <label key={score} className="flex items-center space-x-3 p-2 border rounded hover:bg-purple-25 cursor-pointer">
                   <input
                     type="radio"
-                    {...register('gcs.motorResponse', { valueAsNumber: true })}
+                    {...register('gcs.motorResponse')}
                     value={score}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500"
                   />

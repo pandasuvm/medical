@@ -13,11 +13,13 @@ export default function DemographicsPhase() {
   const age = watch('demographics.age');
   const sex = watch('demographics.sex');
   const hospitalNo = watch('demographics.hospitalNo');
+  const financialStatus = watch('demographics.financialStatus');
 
   // Check if phase is complete and show notification
   useEffect(() => {
     const isComplete = age && sex && hospitalNo && weight && occupation && 
-                      (occupation !== 'Other' || watch('demographics.occupationOther'));
+                      (occupation !== 'Other' || watch('demographics.occupationOther')) &&
+                      (financialStatus ? (financialStatus !== 'Other' || watch('demographics.financialStatusOther')) : true);
     
     if (isComplete) {
       // Debounced completion notification
@@ -31,7 +33,7 @@ export default function DemographicsPhase() {
       
       return () => clearTimeout(timer);
     }
-  }, [age, sex, hospitalNo, weight, occupation, markPhaseComplete, watch]);
+  }, [age, sex, hospitalNo, weight, occupation, financialStatus, markPhaseComplete, watch]);
 
   return (
     <div className="space-y-6">
@@ -73,6 +75,7 @@ export default function DemographicsPhase() {
               <option value="">Select sex</option>
               <option value="M">Male</option>
               <option value="F">Female</option>
+              <option value="Other">Other</option>
             </select>
             {(errors.demographics as any)?.sex && (
               <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).sex?.message}</p>
@@ -138,26 +141,6 @@ export default function DemographicsPhase() {
             )}
           </div>
 
-          {/* Mid Arm Circumference */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Mid Arm Circumference (cm)
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*\\.?[0-9]*"
-              {...register('demographics.midArmCircumference')}
-              value={watch('demographics.midArmCircumference') || ''}
-              onChange={(e) => setValue('demographics.midArmCircumference', e.target.value, { shouldDirty: true, shouldTouch: true })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="10-50"
-            />
-            {(errors.demographics as any)?.midArmCircumference && (
-              <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).midArmCircumference?.message}</p>
-            )}
-          </div>
-
           {/* Occupation */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -201,6 +184,47 @@ export default function DemographicsPhase() {
               />
               {(errors.demographics as any)?.occupationOther && (
                 <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).occupationOther?.message}</p>
+              )}
+            </div>
+          )}
+
+          {/* Financial Status */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Financial Status
+            </label>
+            <select
+              {...register('demographics.financialStatus')}
+              value={financialStatus || ''}
+              onChange={(e) => setValue('demographics.financialStatus', e.target.value as any, { shouldDirty: true, shouldTouch: true })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select financial status</option>
+              <option value="BPL">BPL</option>
+              <option value="APL">APL</option>
+              <option value="GovtInsurance">Government insurance</option>
+              <option value="PrivateInsurance">Private insurance</option>
+              <option value="SelfPay">Self pay</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          {/* Other Financial Status */}
+          {financialStatus === 'Other' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Specify Financial Status *
+              </label>
+              <input
+                type="text"
+                {...register('demographics.financialStatusOther')}
+                value={watch('demographics.financialStatusOther') || ''}
+                onChange={(e) => setValue('demographics.financialStatusOther', e.target.value, { shouldDirty: true, shouldTouch: true })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Please specify"
+              />
+              {(errors.demographics as any)?.financialStatusOther && (
+                <p className="text-red-500 text-sm mt-1">{(errors.demographics as any).financialStatusOther?.message}</p>
               )}
             </div>
           )}

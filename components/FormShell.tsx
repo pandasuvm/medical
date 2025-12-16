@@ -6,6 +6,7 @@ import { formRootSchema } from '../schemas/formSchemas';
 import { z } from 'zod';
 import { useFormStore } from '../stores/useFormStore';
 import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 import {
   DocumentArrowDownIcon,
   ClockIcon,
@@ -20,25 +21,36 @@ import {
   ClipboardDocumentListIcon,
   FlagIcon,
   ChartBarIcon,
-  ComputerDesktopIcon
+  ComputerDesktopIcon,
+  ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 
 // Import components
 import DemographicsPhase from './DemographicsPhase';
 import ComorbiditiesPhase from './ComorbiditiesPhase';
-import GCSPhase from './GCSPhase';
 import IndicationPhase from './IndicationPhase';
 import LeonScorePhase from './LeonScorePhase';
 import VitalSignsPhase from './VitalSignsPhase';
 import MonitoringPhase from './MonitoringPhase';
+import PreIntubationPhase from './PreIntubationPhase';
+import PostIntubationPhase from './PostIntubationPhase';
+import IntubationAttemptsPhase from './IntubationAttemptsPhase';
 import MobileAlert from './MobileAlert';
 import { MEARPDFGenerator } from '../utils/pdfGenerator';
 
 type FormData = z.infer<typeof formRootSchema>;
 
-export default function FormShell() {
+interface FormShellProps {
+  hospitalNo?: string;
+  draftId?: number;
+}
+
+export default function FormShell({ hospitalNo, draftId: initialDraftId }: FormShellProps = {}) {
+  const router = useRouter();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [draftInitialized, setDraftInitialized] = useState(false);
+  const isSyncingFromStore = React.useRef(false);
 
   const methods = useForm<FormData>({
     resolver: zodResolver(formRootSchema),
@@ -51,19 +63,17 @@ export default function FormShell() {
         hospitalNo: '',
         weight: '',
         height: '',
-        midArmCircumference: '',
         occupation: undefined,
-        occupationOther: ''
+        occupationOther: '',
+        financialStatus: undefined,
+        financialStatusOther: ''
       },
       comorbidities: {
         diabetes: false,
         hypertension: false,
-        ischemicHeartDisease: false,
         chronicRenalDisease: false,
         chronicLiverDisease: false,
-        obstructiveLungDisease: false,
-        cerebrovascularDisease: false,
-        hypothyroidism: false,
+        reactiveAirwayDisease: false,
         others: false,
         othersText: ''
       },
@@ -99,11 +109,133 @@ export default function FormShell() {
         respiratoryRate: '',
         spo2: '',
         temperature: ''
+      },
+      preInductionLabs: {
+        ph: undefined,
+        pao2: undefined,
+        paco2: undefined,
+        lactate: undefined,
+        hemoglobin: undefined,
+        platelets: undefined,
+        glucose: undefined,
+        hco3: undefined,
+        creatinine: undefined,
+        urea: undefined,
+        na: undefined,
+        k: undefined
+      },
+      airwayStatus: {
+        failureToMaintainProtectAirway: false,
+        failureOfVentilationOxygenation: false,
+        deteriorationAnticipated: false,
+        predictorForDifficultAirway: false,
+        safeApneaTime: undefined
+      },
+      preIntubationManagement: {
+        // Induction / sedation medications (initialize so fields are fully reactive)
+        etomidate: { given: false, dose: undefined },
+        propofol: { given: false, dose: undefined },
+        ketamine: { given: false, dose: undefined },
+        midazolam: { given: false, dose: undefined },
+        fentanyl: { given: false, dose: undefined },
+        succinylcholine: { given: false, dose: undefined },
+        rocuronium: { given: false, dose: undefined },
+        vecuronium: { given: false, dose: undefined },
+        atracurium: { given: false, dose: undefined },
+        cisatracurium: { given: false, dose: undefined },
+        otherMedications: [],
+        // Pre-induction fluids
+        preInductionFluids: {
+          normalSaline: false,
+          ringerLactate: false,
+          colloids: false,
+          volumeMl: undefined
+        },
+        // Push-dose pressors
+        pushDosePressor: {
+          adrenaline: false,
+          noradrenaline: false,
+          phenylephrine: false,
+          metaraminol: false,
+          dose: undefined
+        },
+        // Vasopressor infusion
+        vasopressorInfusion: {
+          agent: 'none',
+          doseMcgPerKgMin: undefined
+        },
+        // Sedation infusion & choice
+        sedationInfusion: {
+          agent: 'none',
+          dose: undefined
+        },
+        sedationDone: undefined
+      },
+      postIntubationGcs: {
+        eye: '',
+        motor: '',
+        verbal: ''
+      },
+      ventilatorSettings: {
+        ettCdValue: '',
+        mode: '',
+        peep: undefined,
+        pPeak: undefined,
+        minuteVentilation: undefined,
+        changeInSettings: ''
+      },
+      postIntubationEvents: {
+        postIntubationCardiacArrest: false,
+        cardiacArrestDetails: '',
+        otherSeriousAdverseEvents: ''
+      },
+      intubationAttempts: [],
+      totalAttempts: 0,
+      monitoringTable: {
+        post5: {
+          heartRate: '',
+          systolicBP: '',
+          diastolicBP: '',
+          respiratoryRate: '',
+          spo2: '',
+          temperature: ''
+        },
+        post10: {
+          heartRate: '',
+          systolicBP: '',
+          diastolicBP: '',
+          respiratoryRate: '',
+          spo2: '',
+          temperature: ''
+        },
+        post15: {
+          heartRate: '',
+          systolicBP: '',
+          diastolicBP: '',
+          respiratoryRate: '',
+          spo2: '',
+          temperature: ''
+        },
+        post30: {
+          heartRate: '',
+          systolicBP: '',
+          diastolicBP: '',
+          respiratoryRate: '',
+          spo2: '',
+          temperature: ''
+        },
+        modifiedShockIndex: {
+          post5: '',
+          post10: '',
+          post15: '',
+          post30: ''
+        }
       }
     }
   });
 
   const {
+    data,
     setData,
     currentPhase,
     setCurrentPhase,
@@ -113,31 +245,104 @@ export default function FormShell() {
     elapsedTime,
     updateElapsedTime,
     loadDraft,
+    createDraft,
     saveDraft,
     dismissAlert,
-    clearStaleAlerts
+    clearStaleAlerts,
+    currentHospitalNo,
+    draftId
   } = useFormStore();
 
   // Load draft on component mount and clear stale alerts
   useEffect(() => {
-    loadDraft();
-    clearStaleAlerts();
-  }, [loadDraft, clearStaleAlerts]);
-
-  // Watch form changes and update store
-  useEffect(() => {
-    const subscription = methods.watch((data) => {
-      if (data) {
-        setData(data as Partial<FormData>);
-        // Auto-save draft every 10 seconds
-        const autoSaveTimer = setTimeout(() => {
-          saveDraft();
-        }, 10000);
-        return () => clearTimeout(autoSaveTimer);
+    (async () => {
+      if (initialDraftId) {
+        // Load draft by ID from URL
+        await loadDraft(initialDraftId, hospitalNo);
+      } else if (hospitalNo) {
+        // If hospital number is provided, try loading by hospital number
+        await loadDraft(undefined, hospitalNo);
+      } else if (draftId) {
+        // If draft ID exists in store, load it
+        await loadDraft(draftId);
+      } else {
+        // Create a new draft if none exists
+        await createDraft();
       }
+      clearStaleAlerts();
+      setDraftInitialized(true);
+    })();
+  }, [loadDraft, createDraft, clearStaleAlerts, hospitalNo, initialDraftId, draftId]);
+
+  // Once draft has been loaded into the store, hydrate the React Hook Form values
+  // This only runs once when draft is initialized
+  const hasSyncedDataRef = React.useRef(false);
+  useEffect(() => {
+    if (!draftInitialized || hasSyncedDataRef.current) return;
+    if (data && Object.keys(data).length > 0) {
+      hasSyncedDataRef.current = true;
+      isSyncingFromStore.current = true;
+      methods.reset(data as any);
+      // Reset flag after a brief delay to allow form to update
+      setTimeout(() => {
+        isSyncingFromStore.current = false;
+      }, 200);
+    }
+    // Only run when draftInitialized changes, not when data changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftInitialized]);
+
+
+  // Watch form changes and update store - this catches all changes including dropdowns via setValue
+  // Also trigger a debounced save after form changes
+  const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    if (!draftInitialized) return;
+    
+    // Watch all form fields for changes
+    // react-hook-form's watch() automatically catches changes from setValue, onChange, etc.
+    const subscription = methods.watch((formData) => {
+      // Skip updating store if we're currently syncing from store to form
+      if (isSyncingFromStore.current || !formData) return;
+      
+      // Update store with form data - this will trigger on all form changes including dropdowns
+      setData(formData as Partial<FormData>);
+      
+      // Debounced save - save 2 seconds after last change
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      saveTimeoutRef.current = setTimeout(() => {
+        saveDraft();
+      }, 2000); // Save 2 seconds after last change
     });
-    return () => subscription.unsubscribe();
-  }, [methods, setData, saveDraft]);
+    
+    return () => {
+      subscription.unsubscribe();
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [methods, setData, draftInitialized, saveDraft]);
+  
+  // Auto-save draft separately with debouncing - get fresh form data
+  useEffect(() => {
+    if (!draftInitialized || isSyncingFromStore.current) return;
+    
+    const autoSaveTimer = setTimeout(() => {
+      // Get current form values directly instead of relying on store data
+      const currentFormData = methods.getValues();
+      if (currentFormData && Object.keys(currentFormData).length > 0) {
+        // Update store with current form data before saving
+        setData(currentFormData as Partial<FormData>);
+        // Then save (saveDraft will use the updated state)
+        setTimeout(() => saveDraft(), 100);
+      }
+    }, 10000); // Auto-save every 10 seconds
+    
+    return () => clearTimeout(autoSaveTimer);
+  }, [data, draftInitialized, saveDraft, methods, setData]);
 
   // Update timer every second
   useEffect(() => {
@@ -153,6 +358,7 @@ export default function FormShell() {
   }, [timerActive, updateElapsedTime]);
 
   // Enhanced phase configuration with professional medical icons
+  // Ordered to mirror the PROFORMA blocks
   const phases = [
     {
       id: 'demographics',
@@ -160,55 +366,71 @@ export default function FormShell() {
       component: DemographicsPhase,
       color: 'blue',
       icon: UserIcon,
-      description: 'Patient identification and basic information'
-    },
-    {
-      id: 'comorbidities',
-      title: 'Comorbidities',
-      component: ComorbiditiesPhase,
-      color: 'orange',
-      icon: ClipboardDocumentListIcon,
-      description: 'Medical history and risk factors'
-    },
-    {
-      id: 'gcs',
-      title: 'GCS Assessment',
-      component: GCSPhase,
-      color: 'purple',
-      icon: CpuChipIcon,
-      description: 'Glasgow Coma Scale evaluation'
-    },
-    {
-      id: 'indication',
-      title: 'Indication',
-      component: IndicationPhase,
-      color: 'green',
-      icon: FlagIcon,
-      description: 'Intubation indication and urgency'
-    },
-    {
-      id: 'leon',
-      title: 'LEON Score',
-      component: LeonScorePhase,
-      color: 'indigo',
-      icon: ChartBarIcon,
-      description: 'Difficult airway prediction scoring'
+      description: 'Patient demographics & basic data'
     },
     {
       id: 'vitals',
-      title: 'Vital Signs',
+      title: 'Pre-induction Hemodynamics & Labs',
       component: VitalSignsPhase,
       color: 'red',
       icon: HeartIcon,
-      description: 'Pre-induction vital signs assessment'
+      description: 'Pre-induction vitals, labs & modified shock index'
+    },
+    {
+      id: 'indication',
+      title: 'Indication for Intubation',
+      component: IndicationPhase,
+      color: 'green',
+      icon: FlagIcon,
+      description: 'Trauma / Non-trauma indication for intubation'
+    },
+    {
+      id: 'leon',
+      title: 'Airway & LEON Score',
+      component: LeonScorePhase,
+      color: 'indigo',
+      icon: ChartBarIcon,
+      description: 'Airway assessment & difficult airway prediction'
+    },
+    {
+      id: 'preIntubation',
+      title: 'Pre-intubation Status & Medication',
+      component: PreIntubationPhase,
+      color: 'amber',
+      icon: ClipboardDocumentListIcon,
+      description: 'Medications, fluids, pressors & sedation'
+    },
+    {
+      id: 'comorbidities',
+      title: 'Comorbidities & Post-intubation GCS',
+      component: ComorbiditiesPhase,
+      color: 'orange',
+      icon: ClipboardDocumentListIcon,
+      description: 'Comorbidities and post-intubation neurological status'
+    },
+    {
+      id: 'postIntubation',
+      title: 'ETT/CD & Ventilator Settings',
+      component: PostIntubationPhase,
+      color: 'emerald',
+      icon: ChartBarIcon,
+      description: 'Post-intubation ventilator settings & adverse events'
+    },
+    {
+      id: 'attempts',
+      title: 'Intubation Attempts',
+      component: IntubationAttemptsPhase,
+      color: 'sky',
+      icon: FlagIcon,
+      description: 'Intubation attempts and technique details'
     },
     {
       id: 'monitoring',
-      title: 'Monitoring',
+      title: 'Hemodynamics Over Time',
       component: MonitoringPhase,
-      color: 'teal',
-      icon: ComputerDesktopIcon,
-      description: 'Post-intubation monitoring plan'
+      color: 'cyan',
+      icon: CpuChipIcon,
+      description: 'Pre-induction and serial post-induction vitals at fixed intervals'
     }
   ];
 
@@ -248,30 +470,38 @@ export default function FormShell() {
     }
   };
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
     try {
       const formData = methods.getValues();
       const pdfGenerator = new MEARPDFGenerator();
 
-      // Create a simplified data structure for PDF generation
+      // Create a data structure for PDF generation aligned with PROFORMA
       const pdfData = {
         demographics: formData.demographics,
         vitals: formData.preInductionVitals,
         gcs: formData.gcs,
         indication: formData.indication,
-        leonScore: formData.leonScore,
         comorbidities: formData.comorbidities,
+        leonScore: formData.leonScore,
+        preInductionLabs: formData.preInductionLabs,
+        airwayStatus: formData.airwayStatus,
+        preIntubationManagement: formData.preIntubationManagement,
+        postIntubationGcs: formData.postIntubationGcs,
+        ventilatorSettings: formData.ventilatorSettings,
+        postIntubationEvents: formData.postIntubationEvents,
+        intubationAttempts: formData.intubationAttempts,
         calculatedValues,
         alerts,
         timestamp: new Date()
       };
 
-      await pdfGenerator.generatePDF(pdfData as any, {
+      await pdfGenerator.generatePDF(pdfData, {
         includeAlerts: true,
         includeCalculations: true,
-        includeTimestamp: true,
-        watermark: 'MEAR - CONFIDENTIAL'
+        includeTimestamp: true
       });
 
       const timestamp = new Date().toISOString().slice(0, 16).replace('T', '_');
@@ -292,26 +522,144 @@ export default function FormShell() {
     }
   };
 
-  const submit = methods.handleSubmit(async (data) => {
-    try {
-      console.log('Form submitted:', data);
-      console.log('Calculated values:', calculatedValues);
+  const submit = methods.handleSubmit(
+    async (data) => {
+      console.log('Form submission started', data);
+      setIsGeneratingPDF(true);
+      try {
+        const authRaw = typeof window !== 'undefined' ? localStorage.getItem('medical_auth') : null;
+        const auth = authRaw ? JSON.parse(authRaw) : null;
+        const token: string | undefined = auth?.token;
+        console.log('Auth token:', token ? 'present' : 'missing');
 
-      // Generate PDF on submit
-      await generatePDF();
+      // First persist the full form to the backend
+      try {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
 
-      toast.success('Form submitted successfully!', {
-        id: 'form-submission',
-        duration: 3000
-      });
-      // TODO: POST to /api/airway-registry
-    } catch (error) {
-      toast.error('Submission failed. Please try again.', {
-        id: 'form-submission',
-        duration: 3000
-      });
+        const response = await fetch(`${API_BASE_URL}/api/mear`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+          console.error('Backend save failed', await response.text());
+          toast.error('Failed to save to registry backend', { id: 'backend-save', duration: 3000 });
+        } else {
+          const json = await response.json().catch(() => ({}));
+          console.log('Saved MEAR case with id:', json.id);
+
+          // Clear server-side and local drafts so user doesn't reopen old data
+          if (token) {
+            try {
+              const deleteUrl = new URL(`${API_BASE_URL}/api/draft`);
+              let hasParam = false;
+              
+              // Prefer draftId if it exists and is not null
+              if (draftId !== null && draftId !== undefined) {
+                deleteUrl.searchParams.append('draftId', draftId.toString());
+                hasParam = true;
+              } else {
+                // Try to get hospitalNo from store, form data, or props
+                const hospitalNoToUse = currentHospitalNo || 
+                                       (data as any)?.demographics?.hospitalNo || 
+                                       hospitalNo;
+                
+                if (hospitalNoToUse) {
+                  deleteUrl.searchParams.append('hospitalNo', hospitalNoToUse);
+                  hasParam = true;
+                }
+              }
+              
+              // Only make the DELETE request if we have a parameter
+              if (hasParam) {
+                const deleteResponse = await fetch(deleteUrl.toString(), {
+                  method: 'DELETE',
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                if (!deleteResponse.ok) {
+                  const errorText = await deleteResponse.text();
+                  console.error('Failed to delete draft:', deleteResponse.status, errorText);
+                } else {
+                  console.log('Draft deleted successfully');
+                }
+              } else {
+                console.warn('No draftId or hospitalNo available to delete draft');
+              }
+            } catch (e) {
+              console.error('Failed to clear server draft', e);
+            }
+          }
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('mear-form-draft');
+          }
+        }
+      } catch (err) {
+        console.error('Error calling backend:', err);
+        toast.error('Could not reach backend API', { id: 'backend-save', duration: 3000 });
+      }
+
+        // Generate PDF on submit (even if backend save failed)
+        await generatePDF();
+
+        toast.success('Form submitted successfully!', {
+          id: 'form-submission',
+          duration: 3000
+        });
+        
+        // Redirect to dashboard after successful submission
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1500);
+      } catch (error) {
+        console.error('Submission error:', error);
+        toast.error('Submission failed. Please try again.', {
+          id: 'form-submission',
+          duration: 3000
+        });
+      } finally {
+        setIsGeneratingPDF(false);
+      }
+    },
+    (errors) => {
+      // Handle validation errors with detailed messages
+      console.error('Form validation errors:', errors);
+      
+      // Extract detailed error messages
+      const errorMessages: string[] = [];
+      const extractErrors = (errorObj: any, path: string = '') => {
+        if (errorObj._errors && errorObj._errors.length > 0) {
+          errorMessages.push(`${path}: ${errorObj._errors.join(', ')}`);
+        }
+        Object.keys(errorObj).forEach(key => {
+          if (key !== '_errors' && typeof errorObj[key] === 'object' && errorObj[key] !== null) {
+            const newPath = path ? `${path}.${key}` : key;
+            extractErrors(errorObj[key], newPath);
+          }
+        });
+      };
+      extractErrors(errors);
+      
+      if (errorMessages.length > 0) {
+        const message = errorMessages.slice(0, 3).join('; '); // Show first 3 errors
+        toast.error(`Validation errors: ${message}`, {
+          id: 'form-validation-error',
+          duration: 6000
+        });
+      } else {
+        toast.error('Please check the form for errors', {
+          id: 'form-validation-error',
+          duration: 4000
+        });
+      }
     }
-  });
+  );
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -321,9 +669,27 @@ export default function FormShell() {
 
   const criticalAlerts = alerts.filter(alert => alert.level === 'critical');
 
+  // Show loader while draft is being loaded
+  if (!draftInitialized) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <HeartIcon className="h-8 w-8 text-blue-600" />
+            </div>
+          </div>
+          <p className="text-gray-600 text-lg font-medium mt-4">Loading form data...</p>
+          <p className="text-gray-500 text-sm mt-2">Please wait</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <FormProvider {...methods}>
-      <div className="min-h-screen bg-gray-50" id="mear-form-container">
+      <div className="min-h-screen bg-slate-100" id="mear-form-container">
         {/* Mobile Alert System */}
         <MobileAlert
           alerts={alerts.map(alert => ({
@@ -340,17 +706,27 @@ export default function FormShell() {
         {/* Desktop Layout */}
         <div className="hidden lg:flex h-screen">
           {/* Desktop Sidebar */}
-          <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-screen">
+          <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-screen shadow-lg">
             {/* Header */}
             <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <HeartIcon className="h-6 w-6 text-white" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <HeartIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900">MEAR</h1>
+                    <p className="text-xs text-gray-600">Emergency Airway Registry</p>
+                  </div>
                 </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">MEAR</h1>
-                  <p className="text-xs text-gray-600">Emergency Airway Registry</p>
-                </div>
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Back to Dashboard"
+                >
+                  <ArrowLeftIcon className="h-4 w-4" />
+                  <span className="hidden xl:inline">Dashboard</span>
+                </button>
               </div>
 
               {/* Progress Overview */}
@@ -463,9 +839,11 @@ export default function FormShell() {
             {/* Form Content */}
             <div className="flex-1 overflow-y-auto p-6">
               <div className="max-w-5xl mx-auto">
-                <form onSubmit={submit} className="space-y-8">
-                  <CurrentPhaseComponent />
-                </form>
+                <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 md:p-8">
+                  <form id="mear-form-desktop" onSubmit={submit} className="space-y-8">
+                    <CurrentPhaseComponent />
+                  </form>
+                </div>
               </div>
             </div>
 
@@ -488,7 +866,11 @@ export default function FormShell() {
 
                 {currentPhaseIndex === phases.length - 1 ? (
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      submit(e);
+                    }}
                     disabled={isGeneratingPDF}
                     className="
                       flex items-center space-x-2 px-8 py-2 bg-green-600 text-white
@@ -522,6 +904,13 @@ export default function FormShell() {
           <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
             <div className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="p-2 rounded-lg hover:bg-gray-100"
+                  title="Back to Dashboard"
+                >
+                  <ArrowLeftIcon className="h-5 w-5" />
+                </button>
                 <button
                   onClick={() => setShowMobileMenu(!showMobileMenu)}
                   className="p-2 rounded-lg hover:bg-gray-100"
@@ -646,7 +1035,11 @@ export default function FormShell() {
 
               {currentPhaseIndex === phases.length - 1 ? (
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    submit(e);
+                  }}
                   disabled={isGeneratingPDF}
                   className="
                     flex items-center space-x-2 px-6 py-2 bg-green-600 text-white

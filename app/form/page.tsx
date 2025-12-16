@@ -1,10 +1,12 @@
 'use client';
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import FormShell from '../../components/FormShell';
 
 export default function FormPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [hospitalNo, setHospitalNo] = useState<string | undefined>();
 
   useEffect(() => {
     // Check if user is authenticated
@@ -30,11 +32,22 @@ export default function FormPage() {
       router.push('/login');
       return;
     }
-  }, [router]);
+
+    // Get hospital number or draft ID from URL params if present
+    const hospitalNoParam = searchParams.get('hospitalNo');
+    const draftIdParam = searchParams.get('draftId');
+    if (hospitalNoParam) {
+      setHospitalNo(hospitalNoParam);
+    }
+    // draftId is handled in FormShell
+  }, [router, searchParams]);
+
+  const draftIdParam = searchParams.get('draftId');
+  const draftId = draftIdParam ? (isNaN(Number(draftIdParam)) ? undefined : Number(draftIdParam)) : undefined;
 
   return (
     <div className="">
-      <FormShell />
+      <FormShell hospitalNo={hospitalNo} draftId={draftId} />
     </div>
   );
 }

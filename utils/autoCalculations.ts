@@ -123,12 +123,9 @@ export function calcComorbidityBurden(comorbidities: Comorbidities): number {
 
   if (comorbidities.diabetes) score += 1;
   if (comorbidities.hypertension) score += 1;
-  if (comorbidities.ischemicHeartDisease) score += 2;
   if (comorbidities.chronicRenalDisease) score += 2;
   if (comorbidities.chronicLiverDisease) score += 2;
-  if (comorbidities.obstructiveLungDisease) score += 1;
-  if (comorbidities.cerebrovascularDisease) score += 2;
-  if (comorbidities.hypothyroidism) score += 1;
+  if (comorbidities.reactiveAirwayDisease) score += 1;
   if (comorbidities.others) score += 1;
 
   return score;
@@ -147,11 +144,6 @@ export function getComorbidityAlerts(comorbidities: Comorbidities): string[] {
     alerts.push('Consider antihypertensive adjustment');
   }
 
-  if (comorbidities.ischemicHeartDisease) {
-    alerts.push('Cardiac risk stratification needed');
-    alerts.push('Monitor for perioperative MI');
-  }
-
   if (comorbidities.chronicRenalDisease) {
     alerts.push('Fluid management caution');
     alerts.push('Monitor electrolytes closely');
@@ -162,14 +154,9 @@ export function getComorbidityAlerts(comorbidities: Comorbidities): string[] {
     alerts.push('Coagulation monitoring needed');
   }
 
-  if (comorbidities.obstructiveLungDisease) {
+  if (comorbidities.reactiveAirwayDisease) {
     alerts.push('Ventilator settings optimization');
     alerts.push('PEEP limitations');
-  }
-
-  if (comorbidities.cerebrovascularDisease) {
-    alerts.push('ICP monitoring consideration');
-    alerts.push('Neurological checks frequent');
   }
 
   return alerts;

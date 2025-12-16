@@ -14,6 +14,8 @@ import {
   normalizeVitalSigns
 } from '../utils/autoCalculations';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+
 export interface FormState {
   // Form data
   data: Partial<FormData>;
@@ -29,6 +31,8 @@ export interface FormState {
   currentPhase: string;
   isComplete: boolean;
   isDraft: boolean;
+  draftId: number | null;
+  currentHospitalNo: string | null;
 
   // Timer state for post-intubation monitoring
   timerActive: boolean;
@@ -57,8 +61,9 @@ export interface FormState {
   completeMonitoringInterval: (interval: string) => void;
   markPhaseComplete: (phase: string) => void;
   calculateValues: () => void;
-  saveDraft: () => void;
-  loadDraft: () => void;
+  createDraft: () => Promise<number | null>;
+  saveDraft: () => Promise<void>;
+  loadDraft: (draftId?: number, hospitalNo?: string) => Promise<void>;
   clearForm: () => void;
 }
 
@@ -70,6 +75,8 @@ const initialState = {
   currentPhase: 'demographics',
   isComplete: false,
   isDraft: false,
+  draftId: null,
+  currentHospitalNo: null,
   timerActive: false,
   timerStartTime: null,
   elapsedTime: 0,
@@ -88,6 +95,10 @@ export const useFormStore = create<FormState>()(
         const updatedData = { ...state.data, ...newData };
         const calculatedValues = calculateAllValues(updatedData);
 
+        // Update currentHospitalNo if hospital number is in the data
+        const formData = updatedData as any;
+        const hospitalNo = formData?.demographics?.hospitalNo || state.currentHospitalNo;
+
         // Compute alerts from current data only
         const computedAlerts = generateClinicalAlerts(updatedData as FormData);
         const prevIds = state.lastComputedAlertIds ?? [];
@@ -103,7 +114,8 @@ export const useFormStore = create<FormState>()(
           alerts,
           activeProtocols,
           lastComputedAlertIds: computedAlerts.map(a => a.id),
-          isDraft: true
+          isDraft: true,
+          currentHospitalNo: hospitalNo || state.currentHospitalNo
         };
       });
     },
@@ -112,6 +124,10 @@ export const useFormStore = create<FormState>()(
       set((state) => {
         const newData = { ...state.data };
         setNestedValue(newData, path, value);
+
+        // Update currentHospitalNo if hospital number field is updated
+        const formData = newData as any;
+        const hospitalNo = formData?.demographics?.hospitalNo || state.currentHospitalNo;
 
         const calculatedValues = calculateAllValues(newData);
         const computedAlerts = generateClinicalAlerts(newData as FormData);
@@ -127,7 +143,8 @@ export const useFormStore = create<FormState>()(
           alerts,
           activeProtocols,
           lastComputedAlertIds: computedAlerts.map(a => a.id),
-          isDraft: true
+          isDraft: true,
+          currentHospitalNo: hospitalNo || state.currentHospitalNo
         };
       });
     },
@@ -332,35 +349,253 @@ export const useFormStore = create<FormState>()(
       }));
     },
 
-    saveDraft: () => {
+    createDraft: async () => {
       const state = get();
-      localStorage.setItem('mear-form-draft', JSON.stringify({
-        data: state.data,
-        currentPhase: state.currentPhase,
-        timestamp: Date.now()
-      }));
-      set({ isDraft: false });
+      try {
+        const authRaw = typeof window !== 'undefined' ? localStorage.getItem('medical_auth') : null;
+        const auth = authRaw ? JSON.parse(authRaw) : null;
+        const token = auth?.token as string | undefined;
+
+        if (!token) return null;
+
+        const res = await fetch(`${API_BASE_URL}/api/draft`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            form: state.data || {},
+            currentPhase: state.currentPhase || 'demographics'
+          })
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          const newDraftId = result.id;
+          set({ draftId: newDraftId, isDraft: false });
+          
+          // Update URL with draft ID
+          if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            url.searchParams.set('draftId', newDraftId.toString());
+            window.history.replaceState({}, '', url.toString());
+          }
+          
+          return newDraftId;
+        }
+        return null;
+      } catch (e) {
+        console.error('Failed to create draft', e);
+        return null;
+      }
     },
 
-    loadDraft: () => {
-      const saved = localStorage.getItem('mear-form-draft');
-      if (saved) {
-        const draft = JSON.parse(saved);
-        set({
-          data: draft.data,
-          currentPhase: draft.currentPhase,
-          calculatedValues: calculateAllValues(draft.data),
-          alerts: [], // Clear all alerts when loading draft
-          isDraft: false
+    saveDraft: async () => {
+      // Get fresh state to ensure we have the latest data
+      const state = get();
+      try {
+        const authRaw = typeof window !== 'undefined' ? localStorage.getItem('medical_auth') : null;
+        const auth = authRaw ? JSON.parse(authRaw) : null;
+        const token = auth?.token as string | undefined;
+
+        if (!token) return;
+
+        // Extract hospital number from form data (can be null initially)
+        const formData = state.data as any;
+        const hospitalNo = state.currentHospitalNo || formData?.demographics?.hospitalNo || null;
+
+        // If no draft ID exists, create one first
+        let draftId = state.draftId;
+        if (!draftId) {
+          draftId = await get().createDraft();
+          if (!draftId) {
+            console.warn('Failed to create draft');
+            return;
+          }
+        }
+
+        // Always save, even if formData appears empty (it might have default values)
+        // The backend will handle empty forms correctly
+        const dataToSave = formData || {};
+
+        const res = await fetch(`${API_BASE_URL}/api/draft`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            form: dataToSave,
+            currentPhase: state.currentPhase,
+            hospitalNo: hospitalNo,
+            draftId: draftId || null
+          })
         });
-      } else {
-        // Clear stale alerts even if no draft exists
-        get().clearStaleAlerts();
+
+        if (res.ok) {
+          const result = await res.json();
+          set({ 
+            draftId: result.id || draftId,
+            currentHospitalNo: result.hospitalNo || hospitalNo,
+            isDraft: false 
+          });
+          
+          // Update URL with draft ID if not already there
+          if (typeof window !== 'undefined' && draftId) {
+            const url = new URL(window.location.href);
+            if (!url.searchParams.has('draftId')) {
+              url.searchParams.set('draftId', draftId.toString());
+              window.history.replaceState({}, '', url.toString());
+            }
+          }
+        }
+
+        // Also keep a local copy as a fallback (keyed by draft ID)
+        if (typeof window !== 'undefined' && draftId) {
+          localStorage.setItem(`mear-form-draft-${draftId}`, JSON.stringify({
+            data: state.data,
+            currentPhase: state.currentPhase,
+            timestamp: Date.now(),
+            draftId: draftId,
+            hospitalNo: hospitalNo
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to save draft to backend', e);
+      } finally {
+        set({ isDraft: false });
+      }
+    },
+
+    loadDraft: async (draftId?: number, hospitalNo?: string) => {
+      let loadedFromBackend = false;
+      const state = get();
+      
+      // Try to determine draft ID from multiple sources
+      let targetDraftId = draftId || state.draftId;
+      
+      // If no draft ID, try to get from URL
+      if (!targetDraftId && typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlDraftId = urlParams.get('draftId');
+        if (urlDraftId) {
+          const parsedId = Number(urlDraftId);
+          if (!isNaN(parsedId)) {
+            targetDraftId = parsedId;
+          }
+        }
+      }
+      
+      // If still no draft ID, try localStorage
+      if (!targetDraftId && typeof window !== 'undefined') {
+        // Check all localStorage keys for drafts
+        const draftKeys = Object.keys(localStorage).filter(key => key.startsWith('mear-form-draft-'));
+        if (draftKeys.length > 0) {
+          // Try to get the most recent draft
+          let latestDraft = null;
+          let latestTime = 0;
+          for (const key of draftKeys) {
+            try {
+              const draft = JSON.parse(localStorage.getItem(key) || '{}');
+              if (draft.timestamp && draft.timestamp > latestTime) {
+                latestTime = draft.timestamp;
+                latestDraft = draft;
+                targetDraftId = draft.draftId || (key.match(/\d+/) ? Number(key.match(/\d+/)![0]) : null);
+              }
+            } catch (e) {
+              // Skip invalid entries
+            }
+          }
+        }
+      }
+      
+      try {
+        const authRaw = typeof window !== 'undefined' ? localStorage.getItem('medical_auth') : null;
+        const auth = authRaw ? JSON.parse(authRaw) : null;
+        const token = auth?.token as string | undefined;
+
+        if (token && targetDraftId) {
+          const res = await fetch(`${API_BASE_URL}/api/draft?draftId=${targetDraftId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+
+          if (res.status === 200) {
+            const draft = await res.json();
+            set({
+              data: draft.form || {},
+              currentPhase: draft.currentPhase || 'demographics',
+              calculatedValues: calculateAllValues(draft.form || {}),
+              alerts: [],
+              isDraft: false,
+              draftId: draft.id || targetDraftId,
+              currentHospitalNo: draft.hospitalNo || null
+            });
+            loadedFromBackend = true;
+            return; // Successfully loaded, exit early
+          }
+        } else if (token && hospitalNo) {
+          // Fallback to hospital number if draft ID not available
+          const res = await fetch(`${API_BASE_URL}/api/draft?hospitalNo=${encodeURIComponent(hospitalNo)}`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+
+          if (res.status === 200) {
+            const draft = await res.json();
+            set({
+              data: draft.form || {},
+              currentPhase: draft.currentPhase || 'demographics',
+              calculatedValues: calculateAllValues(draft.form || {}),
+              alerts: [],
+              isDraft: false,
+              draftId: draft.id || null,
+              currentHospitalNo: draft.hospitalNo || hospitalNo
+            });
+            loadedFromBackend = true;
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load draft from backend', e);
+      }
+
+      if (!loadedFromBackend && typeof window !== 'undefined') {
+        // Try to load from localStorage
+        const storageKey = targetDraftId ? `mear-form-draft-${targetDraftId}` : 'mear-form-draft';
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          try {
+            const draft = JSON.parse(saved);
+            set({
+              data: draft.data || {},
+              currentPhase: draft.currentPhase || 'demographics',
+              calculatedValues: calculateAllValues(draft.data || {}),
+              alerts: [],
+              isDraft: false,
+              draftId: draft.draftId || targetDraftId || null,
+              currentHospitalNo: draft.hospitalNo || null
+            });
+          } catch (e) {
+            console.error('Failed to parse localStorage draft', e);
+            get().clearStaleAlerts();
+          }
+        } else {
+          get().clearStaleAlerts();
+        }
       }
     },
 
     clearForm: () => {
-      localStorage.removeItem('mear-form-draft');
+      const state = get();
+      // Clear localStorage for current hospital number if exists
+      if (state.currentHospitalNo) {
+        localStorage.removeItem(`mear-form-draft-${state.currentHospitalNo}`);
+      }
+      localStorage.removeItem('mear-form-draft'); // Fallback
       set({
         ...initialState,
         alerts: [] // Explicitly clear alerts

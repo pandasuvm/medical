@@ -1,14 +1,25 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useFormStore } from '../stores/useFormStore';
 
 export default function IndicationPhase() {
-  const { register, watch, formState: { errors } } = useFormContext();
+  const { register, watch, setValue, formState: { errors } } = useFormContext();
   const { alerts, activeProtocols } = useFormStore();
 
   const category = watch('indication.category');
-  const traumaIndications = watch('indication.trauma');
-  const medicalIndications = watch('indication.medical');
+  const categoryRegister = register('indication.category');
+  
+  // Handle category change to ensure proper form updates and trigger re-render
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLInputElement>, newCategory: 'trauma' | 'medical') => {
+    categoryRegister.onChange(e);
+    setValue('indication.category', newCategory, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+  };
+  const traumaIndications = watch('indication.trauma') || {};
+  const medicalIndications = watch('indication.medical') || {};
+
+  const hasAnyTrauma = Object.values(traumaIndications).some(Boolean);
+  const hasAnyMedical = Object.values(medicalIndications).some(Boolean);
+  const hasAnySelection = hasAnyTrauma || hasAnyMedical;
 
   // Filter indication-based alerts
   const indicationAlerts = alerts.filter(alert =>
@@ -32,8 +43,12 @@ export default function IndicationPhase() {
             <label className="flex items-center space-x-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-red-25 border-red-200">
               <input
                 type="radio"
-                {...register('indication.category')}
+                name={categoryRegister.name}
+                ref={categoryRegister.ref}
+                onBlur={categoryRegister.onBlur}
                 value="trauma"
+                checked={category === 'trauma'}
+                onChange={(e) => handleCategoryChange(e, 'trauma')}
                 className="h-5 w-5 text-red-600 focus:ring-red-500"
               />
               <div>
@@ -45,12 +60,16 @@ export default function IndicationPhase() {
             <label className="flex items-center space-x-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-red-25 border-red-200">
               <input
                 type="radio"
-                {...register('indication.category')}
+                name={categoryRegister.name}
+                ref={categoryRegister.ref}
+                onBlur={categoryRegister.onBlur}
                 value="medical"
+                checked={category === 'medical'}
+                onChange={(e) => handleCategoryChange(e, 'medical')}
                 className="h-5 w-5 text-red-600 focus:ring-red-500"
               />
               <div>
-                <div className="font-medium text-gray-900">Medical</div>
+                <div className="font-medium text-gray-900">Non Trauma</div>
                 <div className="text-sm text-gray-600">Medical condition indications</div>
               </div>
             </label>
@@ -91,7 +110,7 @@ export default function IndicationPhase() {
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
                 />
                 <div className="flex-1">
-                  <div className="font-medium text-gray-900">Head injury - Airway threatened</div>
+                  <div className="font-medium text-gray-900">Airway compromise - threatened</div>
                   <div className="text-sm text-gray-600">Triggers: C-spine precautions, video laryngoscopy, surgical airway backup</div>
                   {traumaIndications?.headInjuryAirwayThreatened && (
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -177,10 +196,10 @@ export default function IndicationPhase() {
           </div>
         )}
 
-        {/* Medical Indications */}
+        {/* Medical / Non-Trauma Indications */}
         {category === 'medical' && (
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h3 className="font-medium text-blue-800 mb-4">Medical Indications (Select all that apply)</h3>
+            <h3 className="font-medium text-blue-800 mb-4">Non Trauma Indications (Select all that apply)</h3>
             <div className="space-y-3">
 
               <label className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-blue-25 cursor-pointer">
@@ -204,13 +223,13 @@ export default function IndicationPhase() {
               <label className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-blue-25 cursor-pointer">
                 <input
                   type="checkbox"
-                  {...register('indication.medical.sepsis')}
+                  {...register('indication.medical.sepsisWithHypotension')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
                 />
                 <div className="flex-1">
-                  <div className="font-medium text-gray-900">Sepsis</div>
+                  <div className="font-medium text-gray-900">Sepsis with hypotension</div>
                   <div className="text-sm text-gray-600">Triggers: Sepsis bundle, fluid resuscitation, vasopressor preparation</div>
-                  {medicalIndications?.sepsis && (
+                  {medicalIndications?.sepsisWithHypotension && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Etomidate preferred</span>
                       <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Sepsis bundle</span>
@@ -227,7 +246,7 @@ export default function IndicationPhase() {
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
                 />
                 <div className="flex-1">
-                  <div className="font-medium text-gray-900">Anaphylaxis</div>
+                  <div className="font-medium text-gray-900">Anaphylactic</div>
                   <div className="text-sm text-gray-600">Triggers: Epinephrine protocol, steroid administration, H1/H2 blockers</div>
                   {medicalIndications?.anaphylaxis && (
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -259,29 +278,11 @@ export default function IndicationPhase() {
               <label className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-blue-25 cursor-pointer">
                 <input
                   type="checkbox"
-                  {...register('indication.medical.giBleed')}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
-                />
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900">GI Bleed</div>
-                  <div className="text-sm text-gray-600">Triggers: Blood products, aspiration precautions, rapid sequence with cricoid</div>
-                  {medicalIndications?.giBleed && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Blood products</span>
-                      <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Cricoid pressure</span>
-                    </div>
-                  )}
-                </div>
-              </label>
-
-              <label className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-blue-25 cursor-pointer">
-                <input
-                  type="checkbox"
                   {...register('indication.medical.ichStroke')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
                 />
                 <div className="flex-1">
-                  <div className="font-medium text-gray-900">ICH/Stroke</div>
+                  <div className="font-medium text-gray-900">Stroke</div>
                   <div className="text-sm text-gray-600">Triggers: ICP management, BP targets, anticoagulation reversal</div>
                   {medicalIndications?.ichStroke && (
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -307,6 +308,30 @@ export default function IndicationPhase() {
                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">EEG monitoring</span>
                     </div>
                   )}
+                </div>
+              </label>
+
+              <label className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-blue-25 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register('indication.medical.alteredMentalStatus')}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900">Altered mental status</div>
+                  <div className="text-sm text-gray-600">Non-traumatic altered sensorium requiring airway protection</div>
+                </div>
+              </label>
+
+              <label className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-blue-25 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register('indication.medical.overdosePoison')}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900">Overdoses/Poison</div>
+                  <div className="text-sm text-gray-600">Toxin/overdose requiring airway protection</div>
                 </div>
               </label>
             </div>
@@ -353,7 +378,7 @@ export default function IndicationPhase() {
         )}
 
         {/* Critical Alerts */}
-        {indicationAlerts.length > 0 && (
+        {hasAnySelection && indicationAlerts.length > 0 && (
           <div className="mt-4 space-y-2">
             <h4 className="font-medium text-red-800">Critical Alerts & Actions Required</h4>
             {indicationAlerts.map((alert, index) => (

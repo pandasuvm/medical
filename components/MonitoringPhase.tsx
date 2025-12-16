@@ -1,266 +1,356 @@
 import React from 'react';
+import { useFormContext } from 'react-hook-form';
 import { useFormStore } from '../stores/useFormStore';
 
 export default function MonitoringPhase() {
-  const {
-    timerActive,
-    elapsedTime,
-    nextMonitoringDue,
-    completedIntervals,
-    completeMonitoringInterval,
-    alerts
-  } = useFormStore();
+  const { watch, setValue } = useFormContext();
+  const { timerActive, elapsedTime } = useFormStore();
 
-  // Format elapsed time
+  const preVitals = watch('preInductionVitals') || {};
+  const monitoring = watch('monitoringTable') || {};
+  const calculated = watch('calculatedValues') || {};
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Get monitoring intervals status
-  const intervals = [
-    { id: 'post_5min', label: '5 Minutes', targetTime: 5 * 60 },
-    { id: 'post_10min', label: '10 Minutes', targetTime: 10 * 60 },
-    { id: 'post_15min', label: '15 Minutes', targetTime: 15 * 60 },
-    { id: 'post_30min', label: '30 Minutes', targetTime: 30 * 60 }
+  const timepoints = [
+    { id: 'pre', label: 'Pre Induction' },
+    { id: 'post5', label: 'Post 5 min' },
+    { id: 'post10', label: 'Post 10 min' },
+    { id: 'post15', label: 'Post 15 min' },
+    { id: 'post30', label: 'Post 30 min' }
   ];
-
-  const monitoringAlerts = alerts.filter(alert => alert.category === 'procedural');
 
   return (
     <div className="space-y-6">
-      <div className="bg-cyan-50 p-4 rounded-lg">
-        <h2 className="text-xl font-semibold text-cyan-900 mb-4">Phase 7: Post-Intubation Monitoring</h2>
-        <p className="text-cyan-700 mb-4">
-          Automated monitoring intervals after paralysis administration. Complete assessments at each time point.
-        </p>
+      <div className="bg-white p-6 rounded-xl border border-cyan-200 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-cyan-900">
+              Phase 9: Pre‑induction Hemodynamics & Lab Values
+            </h2>
+            <p className="text-xs text-cyan-700">
+              Record pre‑induction values and serial hemodynamics at 5, 10, 15 and 30 minutes post‑induction.
+            </p>
+          </div>
+          <div className="text-xs text-gray-600 bg-cyan-50 border border-cyan-100 rounded-lg px-3 py-2 flex items-center gap-2">
+            <span className="font-semibold text-cyan-900">Session timer:</span>
+            <span className="font-mono text-cyan-800">
+              {timerActive ? formatTime(elapsedTime) : 'Not started'}
+            </span>
+          </div>
+        </div>
 
-        {/* Timer Display */}
-        {timerActive && (
-          <div className="mb-6 p-4 bg-green-100 rounded-lg border border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-green-800">Post-Intubation Timer</h3>
-                <p className="text-green-600 text-sm">Monitoring patient response and stability</p>
+        {/* Hemodynamic Parameters - Desktop Table */}
+        <div className="mb-4 hidden md:block">
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">
+            Hemodynamic Parameters
+          </h3>
+          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+            <div className="min-w-[720px]">
+              {/* Header row */}
+              <div className="grid grid-cols-6 bg-cyan-50 border-b border-gray-200 text-[11px] font-semibold text-gray-700">
+                <div className="px-3 py-2 border-r border-gray-200">Parameter</div>
+                {timepoints.map(tp => (
+                  <div key={tp.id} className="px-3 py-2 border-r border-gray-200 text-center">
+                    {tp.label}
+                  </div>
+                ))}
               </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-green-700">
-                  {formatTime(elapsedTime)}
+
+              {/* Heart Rate */}
+              <div className="grid grid-cols-6 text-xs border-b border-gray-100">
+                <div className="px-3 py-2 border-r border-gray-200 font-medium bg-gray-50">
+                  Heart Rate (bpm)
                 </div>
-                <div className="text-sm text-green-600">
-                  Since paralysis given
+                {/* Pre-induction (read-only from preInductionVitals) */}
+                <div className="px-3 py-2 border-r border-gray-100 flex items-center justify-center text-sm">
+                  <span className="text-gray-800">
+                    {preVitals.heartRate || '-'}
+                  </span>
                 </div>
+                {/* Post timepoints */}
+                {['post5','post10','post15','post30'].map(tp => (
+                  <div key={tp} className="px-3 py-2 border-r border-gray-100 flex items-center justify-center">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={(monitoring as any)[tp]?.heartRate || ''}
+                      onChange={(e) =>
+                        setValue(`monitoringTable.${tp}.heartRate`, e.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true
+                        })
+                      }
+                      className="w-20 h-8 px-2 py-1 border border-gray-300 rounded text-xs text-center"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Blood Pressure */}
+              <div className="grid grid-cols-6 text-xs border-b border-gray-100">
+                <div className="px-3 py-2 border-r border-gray-200 font-medium bg-gray-50">
+                  Blood Pressure (mmHg)
+                </div>
+                {/* Pre-induction BP */}
+                <div className="px-3 py-2 border-r border-gray-100 flex flex-col items-center justify-center text-xs">
+                  <span className="text-gray-800">
+                    {preVitals.systolicBP || '-'} / {preVitals.diastolicBP || '-'}
+                  </span>
+                </div>
+                {/* Post BP cells */}
+                {['post5','post10','post15','post30'].map(tp => (
+                  <div key={tp} className="px-3 py-2 border-r border-gray-100 flex flex-col items-center justify-center gap-1">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={(monitoring as any)[tp]?.systolicBP || ''}
+                      onChange={(e) =>
+                        setValue(`monitoringTable.${tp}.systolicBP`, e.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true
+                        })
+                      }
+                      className="w-20 h-7 px-2 py-1 border border-gray-300 rounded text-xs text-center"
+                      placeholder="SBP"
+                    />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={(monitoring as any)[tp]?.diastolicBP || ''}
+                      onChange={(e) =>
+                        setValue(`monitoringTable.${tp}.diastolicBP`, e.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true
+                        })
+                      }
+                      className="w-20 h-7 px-2 py-1 border border-gray-300 rounded text-xs text-center"
+                      placeholder="DBP"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* SpO2 */}
+              <div className="grid grid-cols-6 text-xs border-b border-gray-100">
+                <div className="px-3 py-2 border-r border-gray-200 font-medium bg-gray-50">
+                  SpO₂ (%)
+                </div>
+                <div className="px-3 py-2 border-r border-gray-100 flex items-center justify-center text-sm">
+                  <span className="text-gray-800">
+                    {preVitals.spo2 || '-'}
+                  </span>
+                </div>
+                {['post5','post10','post15','post30'].map(tp => (
+                  <div key={tp} className="px-3 py-2 border-r border-gray-100 flex items-center justify-center">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={(monitoring as any)[tp]?.spo2 || ''}
+                      onChange={(e) =>
+                        setValue(`monitoringTable.${tp}.spo2`, e.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true
+                        })
+                      }
+                      className="w-20 h-8 px-2 py-1 border border-gray-300 rounded text-xs text-center"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Modified Shock Index */}
+              <div className="grid grid-cols-6 text-xs">
+                <div className="px-3 py-2 border-r border-gray-200 font-medium bg-gray-50">
+                  Modified shock index
+                </div>
+                <div className="px-3 py-2 border-r border-gray-100 flex items-center justify-center text-sm">
+                  <span className="text-gray-800">
+                    {calculated?.modifiedShockIndex !== undefined
+                      ? calculated.modifiedShockIndex.toFixed(2)
+                      : '-'}
+                  </span>
+                </div>
+                {['post5','post10','post15','post30'].map(tp => (
+                  <div key={tp} className="px-3 py-2 border-r border-gray-100 flex items-center justify-center">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={(monitoring as any).modifiedShockIndex?.[tp] || ''}
+                      onChange={(e) =>
+                        setValue(`monitoringTable.modifiedShockIndex.${tp}`, e.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true
+                        })
+                      }
+                      className="w-20 h-8 px-2 py-1 border border-gray-300 rounded text-xs text-center"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Monitoring Intervals Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {intervals.map((interval) => {
-            const isCompleted = completedIntervals.includes(interval.id);
-            const isDue = nextMonitoringDue === interval.id;
-            const isOverdue = timerActive && elapsedTime > interval.targetTime && !isCompleted;
+        {/* Hemodynamic Parameters - Mobile Cards */}
+        <div className="mb-2 space-y-3 md:hidden">
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">
+            Hemodynamic Parameters
+          </h3>
+
+          {/* Pre-induction card (read-only) */}
+          <div className="border border-gray-200 rounded-lg bg-gray-50 p-3 text-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-semibold text-gray-800">Pre Induction</span>
+              <span className="text-gray-500 text-[11px]">Baseline</span>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Heart Rate (bpm)</span>
+                <span className="font-medium text-gray-900">{preVitals.heartRate || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">BP (mmHg)</span>
+                <span className="font-medium text-gray-900">
+                  {preVitals.systolicBP || '-'} / {preVitals.diastolicBP || '-'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">SpO₂ (%)</span>
+                <span className="font-medium text-gray-900">{preVitals.spo2 || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Modified shock index</span>
+                <span className="font-medium text-gray-900">
+                  {calculated?.modifiedShockIndex !== undefined
+                    ? calculated.modifiedShockIndex.toFixed(2)
+                    : '-'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Post-induction timepoint cards */}
+          {['post5','post10','post15','post30'].map(tp => {
+            const label =
+              tp === 'post5' ? 'Post 5 minutes' :
+              tp === 'post10' ? 'Post 10 minutes' :
+              tp === 'post15' ? 'Post 15 minutes' :
+              'Post 30 minutes';
 
             return (
               <div
-                key={interval.id}
-                className={`p-4 rounded-lg border-2 ${
-                  isCompleted ? 'bg-green-50 border-green-200' :
-                  isDue ? 'bg-yellow-50 border-yellow-300' :
-                  isOverdue ? 'bg-red-50 border-red-300' :
-                  'bg-gray-50 border-gray-200'
-                }`}
+                key={tp}
+                className="border border-cyan-100 rounded-lg bg-white p-3 text-xs shadow-sm"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className={`font-medium ${
-                    isCompleted ? 'text-green-800' :
-                    isDue ? 'text-yellow-800' :
-                    isOverdue ? 'text-red-800' :
-                    'text-gray-700'
-                  }`}>
-                    {interval.label}
-                  </h4>
-                  <div className={`w-3 h-3 rounded-full ${
-                    isCompleted ? 'bg-green-500' :
-                    isDue ? 'bg-yellow-500' :
-                    isOverdue ? 'bg-red-500' :
-                    'bg-gray-300'
-                  }`} />
+                  <span className="font-semibold text-cyan-900">{label}</span>
                 </div>
-
-                <div className="text-sm text-gray-600 mb-3">
-                  Target: {formatTime(interval.targetTime)}
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[11px] text-gray-600 mb-0.5">
+                      Heart Rate (bpm)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={(monitoring as any)[tp]?.heartRate || ''}
+                      onChange={(e) =>
+                        setValue(`monitoringTable.${tp}.heartRate`, e.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true
+                        })
+                      }
+                      className="w-full h-8 px-2 py-1 border border-gray-300 rounded text-xs"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] text-gray-600 mb-0.5">
+                        SBP (mmHg)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={(monitoring as any)[tp]?.systolicBP || ''}
+                        onChange={(e) =>
+                          setValue(`monitoringTable.${tp}.systolicBP`, e.target.value, {
+                            shouldDirty: true,
+                            shouldTouch: true
+                          })
+                        }
+                        className="w-full h-8 px-2 py-1 border border-gray-300 rounded text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-gray-600 mb-0.5">
+                        DBP (mmHg)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={(monitoring as any)[tp]?.diastolicBP || ''}
+                        onChange={(e) =>
+                          setValue(`monitoringTable.${tp}.diastolicBP`, e.target.value, {
+                            shouldDirty: true,
+                            shouldTouch: true
+                          })
+                        }
+                        className="w-full h-8 px-2 py-1 border border-gray-300 rounded text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-gray-600 mb-0.5">
+                      SpO₂ (%)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={(monitoring as any)[tp]?.spo2 || ''}
+                      onChange={(e) =>
+                        setValue(`monitoringTable.${tp}.spo2`, e.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true
+                        })
+                      }
+                      className="w-full h-8 px-2 py-1 border border-gray-300 rounded text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-gray-600 mb-0.5">
+                      Modified shock index
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={(monitoring as any).modifiedShockIndex?.[tp] || ''}
+                      onChange={(e) =>
+                        setValue(`monitoringTable.modifiedShockIndex.${tp}`, e.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true
+                        })
+                      }
+                      className="w-full h-8 px-2 py-1 border border-gray-300 rounded text-xs"
+                    />
+                  </div>
                 </div>
-
-                {isCompleted && (
-                  <div className="text-sm text-green-600 font-medium">
-                    ✓ Completed
-                  </div>
-                )}
-
-                {isDue && (
-                  <button
-                    onClick={() => completeMonitoringInterval(interval.id)}
-                    className="w-full px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm font-medium"
-                  >
-                    Complete Assessment
-                  </button>
-                )}
-
-                {isOverdue && (
-                  <div className="text-sm text-red-600 font-medium">
-                    ⚠ Overdue - Complete ASAP
-                  </div>
-                )}
               </div>
             );
           })}
         </div>
-
-        {/* Current Assessment Form */}
-        {nextMonitoringDue && (
-          <div className="p-4 bg-white rounded-lg border border-cyan-200">
-            <h3 className="font-medium text-cyan-800 mb-4">
-              Current Assessment: {intervals.find(i => i.id === nextMonitoringDue)?.label}
-            </h3>
-
-            {/* Quick Vital Signs Entry */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">HR (bpm)</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  placeholder="60-100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">SBP (mmHg)</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  placeholder="90-140"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">DBP (mmHg)</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  placeholder="60-90"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">SpO2 (%)</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  placeholder="95-100"
-                />
-              </div>
-            </div>
-
-            {/* Complications Checklist */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Complications (check all that apply)</label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {['None', 'Hypotension', 'Hypertension', 'Bradycardia', 'Tachycardia', 'Desaturation', 'Arrhythmia'].map((complication) => (
-                  <label key={complication} className="flex items-center space-x-2 text-sm">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
-                    />
-                    <span>{complication}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Interventions */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Interventions Given</label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                rows={2}
-                placeholder="Describe any medications or interventions..."
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Monitoring Alerts */}
-        {monitoringAlerts.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="font-medium text-cyan-800">Monitoring Alerts</h4>
-            {monitoringAlerts.map((alert, index) => (
-              <div key={index} className={`p-3 rounded-lg border-l-4 ${
-                alert.level === 'critical' ? 'bg-red-50 border-red-400' :
-                alert.level === 'warning' ? 'bg-yellow-50 border-yellow-400' :
-                'bg-blue-50 border-blue-400'
-              }`}>
-                <div className="flex items-start">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{alert.title}</p>
-                    <p className="text-sm text-gray-700">{alert.message}</p>
-                  </div>
-                  <div className="ml-2">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      alert.level === 'critical' ? 'bg-red-100 text-red-800' :
-                      alert.level === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
-                      {alert.level.toUpperCase()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Emergency Actions */}
-        <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <h4 className="font-medium text-red-800 mb-3">Emergency Actions</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <button className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium">
-              Cardiac Arrest Protocol
-            </button>
-            <button className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 font-medium">
-              Failed Intubation Protocol
-            </button>
-            <button className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 font-medium">
-              Push-Dose Pressors
-            </button>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">
-              Ventilator Adjustment
-            </button>
-          </div>
-        </div>
-
-        {/* Completion Status */}
-        {completedIntervals.length === intervals.length && (
-          <div className="mt-6 p-4 bg-green-100 border border-green-200 rounded-lg">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <h4 className="font-medium text-green-800">All Monitoring Intervals Completed</h4>
-                <p className="text-green-600 text-sm">Patient monitoring complete. Ready for final assessment.</p>
-              </div>
-              <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium">
-                Finalize Registry Entry
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

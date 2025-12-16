@@ -3,11 +3,12 @@ import { useFormContext } from 'react-hook-form';
 import { useFormStore } from '../stores/useFormStore';
 
 export default function ComorbiditiesPhase() {
-  const { register, watch, formState: { errors } } = useFormContext();
+  const { register, watch, setValue, formState: { errors } } = useFormContext();
   const { calculatedValues, alerts } = useFormStore();
 
   const others = watch('comorbidities.others');
   const comorbidities = watch('comorbidities');
+  const postIntubationGcs = watch('postIntubationGcs') || {};
 
   // Filter comorbidity-related alerts
   const comorbidityAlerts = alerts.filter(alert => alert.category === 'medication' || alert.triggers.includes('comorbidity_present'));
@@ -15,8 +16,8 @@ export default function ComorbiditiesPhase() {
   return (
     <div className="space-y-6">
       <div className="bg-orange-50 p-4 rounded-lg">
-        <h2 className="text-xl font-semibold text-orange-900 mb-4">Phase 2: Medical History & Comorbidities</h2>
-        <p className="text-orange-700 mb-4">Select all conditions that apply. Each selection will trigger specific risk calculations and management protocols.</p>
+        <h2 className="text-xl font-semibold text-orange-900 mb-4">Phase 5: Comorbidities & Post-Intubation GCS</h2>
+        <p className="text-orange-700 mb-4">Select all comorbidities that apply, then document post-intubation GCS.</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Diabetes */}
@@ -49,23 +50,6 @@ export default function ComorbiditiesPhase() {
             {comorbidities?.hypertension && (
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                 BP target modification
-              </span>
-            )}
-          </div>
-
-          {/* Ischemic Heart Disease */}
-          <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-orange-25">
-            <input
-              type="checkbox"
-              {...register('comorbidities.ischemicHeartDisease')}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label className="text-sm font-medium text-gray-700">
-              Ischemic Heart Disease
-            </label>
-            {comorbidities?.ischemicHeartDisease && (
-              <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
-                Cardiac risk stratification
               </span>
             )}
           </div>
@@ -104,53 +88,19 @@ export default function ComorbiditiesPhase() {
             )}
           </div>
 
-          {/* Obstructive Lung Disease */}
+          {/* Reactive Airway Disease */}
           <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-orange-25">
             <input
               type="checkbox"
-              {...register('comorbidities.obstructiveLungDisease')}
+              {...register('comorbidities.reactiveAirwayDisease')}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <label className="text-sm font-medium text-gray-700">
-              Obstructive Lung Disease (COPD/Asthma)
+              Reactive Airway Disease
             </label>
-            {comorbidities?.obstructiveLungDisease && (
+            {comorbidities?.reactiveAirwayDisease && (
               <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                 Ventilator optimization
-              </span>
-            )}
-          </div>
-
-          {/* Cerebrovascular Disease */}
-          <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-orange-25">
-            <input
-              type="checkbox"
-              {...register('comorbidities.cerebrovascularDisease')}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label className="text-sm font-medium text-gray-700">
-              Cerebrovascular Disease
-            </label>
-            {comorbidities?.cerebrovascularDisease && (
-              <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">
-                ICP monitoring
-              </span>
-            )}
-          </div>
-
-          {/* Hypothyroidism */}
-          <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-orange-25">
-            <input
-              type="checkbox"
-              {...register('comorbidities.hypothyroidism')}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label className="text-sm font-medium text-gray-700">
-              Hypothyroidism
-            </label>
-            {comorbidities?.hypothyroidism && (
-              <span className="text-xs bg-cyan-100 text-cyan-800 px-2 py-1 rounded">
-                Drug interactions
               </span>
             )}
           </div>
@@ -186,27 +136,75 @@ export default function ComorbiditiesPhase() {
           </div>
         )}
 
-        {/* Comorbidity Burden Score */}
-        {calculatedValues.comorbidityBurden !== undefined && calculatedValues.comorbidityBurden > 0 && (
-          <div className="mt-4 p-3 bg-orange-100 rounded-lg">
-            <h4 className="font-medium text-orange-800 mb-2">Risk Assessment</h4>
-            <div className="flex items-center space-x-4">
-              <div>
-                <span className="text-sm font-medium">Comorbidity Burden Score:</span>
-                <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${
-                  calculatedValues.comorbidityBurden <= 2 ? 'bg-green-100 text-green-800' :
-                  calculatedValues.comorbidityBurden <= 4 ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {calculatedValues.comorbidityBurden}
-                  {calculatedValues.comorbidityBurden <= 2 ? ' (Low Risk)' :
-                   calculatedValues.comorbidityBurden <= 4 ? ' (Moderate Risk)' :
-                   ' (High Risk)'}
-                </span>
-              </div>
+        {/* Post-intubation GCS */}
+        <div className="mt-4 p-3 bg-white rounded-lg border border-orange-200">
+          <h4 className="font-medium text-orange-800 mb-2">GCS Post-Intubation</h4>
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">E</label>
+              <select
+                {...register('postIntubationGcs.eye')}
+                value={postIntubationGcs.eye || ''}
+                onChange={(e) =>
+                  setValue('postIntubationGcs.eye', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">-</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">M</label>
+              <select
+                {...register('postIntubationGcs.motor')}
+                value={postIntubationGcs.motor || ''}
+                onChange={(e) =>
+                  setValue('postIntubationGcs.motor', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">-</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">V</label>
+              <select
+                {...register('postIntubationGcs.verbal')}
+                value={postIntubationGcs.verbal || ''}
+                onChange={(e) =>
+                  setValue('postIntubationGcs.verbal', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">-</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Active Alerts */}
         {comorbidityAlerts.length > 0 && (

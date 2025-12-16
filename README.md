@@ -62,13 +62,16 @@ utils/
 ## 🔬 **Clinical Features In Detail**
 
 ### Phase-Based Data Entry
-1. **Demographics** - Patient identification with BMI calculation
-2. **Vital Signs** - Enhanced monitoring with shock index and MAP
+1. **Demographics** - Patient identification, occupation, financial status, BMI
+2. **Comorbidities** - Risk factor assessment with drug interactions
 3. **GCS Assessment** - Neurological evaluation with trend tracking
-4. **Comorbidities** - Risk factor assessment with drug interactions
-5. **Indication** - Clinical reasoning with evidence-based guidelines
-6. **LEON Score** - Difficult airway prediction with automated protocols
-7. **Monitoring** - Post-intubation care planning
+4. **Indication** - Trauma / non-trauma indications mirroring PROFORMA
+5. **LEON & Airway** - Airway status plus LEON difficult airway score
+6. **Pre-intubation Management** - Medications, fluids, pressors, sedation
+7. **Pre-induction Vitals & Labs** - Hemodynamics, modified shock index, labs
+8. **Post-intubation** - GCS, ventilator settings, adverse events
+9. **Monitoring** - Time-based post-intubation care planning
+10. **Intubation Attempts** - Attempts, laryngoscope, blade, bougie, remarks
 
 ### Clinical Decision Rules
 - **LEON Score**: 0-4 scale with specific preparation protocols

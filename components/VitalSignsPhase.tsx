@@ -17,6 +17,9 @@ export default function VitalSignsPhase() {
   const [lastToastTime, setLastToastTime] = useState<{[key: string]: number}>({});
 
   const vitals = watch('preInductionVitals') || {};
+  const labs = watch('preInductionLabs') || {};
+  const gcs = watch('gcs') || {};
+  const airwayStatus = watch('airwayStatus') || {};
   const isPhaseCompleted = completedPhases?.includes('vitals') || false;
 
   // Enhanced vital signs with clinical context
@@ -250,18 +253,19 @@ export default function VitalSignsPhase() {
   return (
     <div className="space-y-8">
       {/* Header Section */}
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <HeartIcon className="h-6 w-6 text-red-600" />
-          <h2 className="text-xl font-semibold text-red-900">Vital Signs Assessment</h2>
+      <div className="bg-white border border-red-200 rounded-xl p-6 shadow-sm">
+        <div className="flex items-center space-x-3 mb-2">
+          <div className="h-9 w-9 rounded-lg bg-red-100 flex items-center justify-center">
+            <HeartIcon className="h-5 w-5 text-red-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-red-900">Pre‑induction Hemodynamic Parameters</h2>
+            <p className="text-xs text-red-600">Enter baseline vitals before induction; trends are handled in monitoring.</p>
+          </div>
           {isPhaseCompleted && (
             <CheckCircleIcon className="h-5 w-5 text-green-600" />
           )}
         </div>
-        <p className="text-red-700 text-sm leading-relaxed">
-          Pre-induction vital signs are critical for airway management planning.
-          Abnormal values trigger automated protocols and equipment preparation.
-        </p>
       </div>
 
       {/* Clinical Context Input */}
@@ -327,6 +331,249 @@ export default function VitalSignsPhase() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Pre-induction Lab Values & Safe Apnea Time (summary) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Pre-induction Lab Values</h3>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">pH</label>
+              <input
+                type="text"
+                {...register('preInductionLabs.ph')}
+                value={labs.ph || ''}
+                onChange={(e) =>
+                  setValue('preInductionLabs.ph', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full h-9 px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">pCO₂ (mmHg)</label>
+              <input
+                type="text"
+                {...register('preInductionLabs.paco2')}
+                value={labs.paco2 || ''}
+                onChange={(e) =>
+                  setValue('preInductionLabs.paco2', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full h-9 px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">HCO₃⁻ (mmol/L)</label>
+              <input
+                type="text"
+                {...register('preInductionLabs.hco3')}
+                value={labs.hco3 || ''}
+                onChange={(e) =>
+                  setValue('preInductionLabs.hco3', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full h-9 px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Lactate (mmol/L)</label>
+              <input
+                type="text"
+                {...register('preInductionLabs.lactate')}
+                value={labs.lactate || ''}
+                onChange={(e) =>
+                  setValue('preInductionLabs.lactate', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full h-9 px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Creatinine (mg/dL)</label>
+              <input
+                type="text"
+                {...register('preInductionLabs.creatinine')}
+                value={labs.creatinine || ''}
+                onChange={(e) =>
+                  setValue('preInductionLabs.creatinine', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full h-9 px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Urea (mg/dL)</label>
+              <input
+                type="text"
+                {...register('preInductionLabs.urea')}
+                value={labs.urea || ''}
+                onChange={(e) =>
+                  setValue('preInductionLabs.urea', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full h-9 px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Na⁺ (mEq/L)</label>
+              <input
+                type="text"
+                {...register('preInductionLabs.na')}
+                value={labs.na || ''}
+                onChange={(e) =>
+                  setValue('preInductionLabs.na', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full h-9 px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">K⁺ (mEq/L)</label>
+              <input
+                type="text"
+                {...register('preInductionLabs.k')}
+                value={labs.k || ''}
+                onChange={(e) =>
+                  setValue('preInductionLabs.k', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full h-9 px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Modified shock index & Safe Apnea Time</h3>
+          <div className="space-y-3 text-sm">
+            {calculatedValues.modifiedShockIndex !== undefined && (
+              <div>
+                <div className="text-xs text-gray-600">Modified shock index</div>
+                <div className={`text-2xl font-bold ${
+                  calculatedValues.modifiedShockIndex > 1.3 ? 'text-red-600' :
+                  calculatedValues.modifiedShockIndex > 0.9 ? 'text-yellow-600' : 'text-green-600'
+                }`}>
+                  {calculatedValues.modifiedShockIndex.toFixed(2)}
+                </div>
+                <div className="text-xs text-gray-500">High risk if &gt; 0.9</div>
+              </div>
+            )}
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">
+                Safe Apnea Time (minutes)
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*\\.?[0-9]*"
+                {...register('airwayStatus.safeApneaTime')}
+                value={airwayStatus.safeApneaTime || ''}
+                onChange={(e) =>
+                  setValue('airwayStatus.safeApneaTime', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full max-w-xs h-9 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Pre-induction GCS */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Pre-induction GCS</h3>
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Eye (E)</label>
+              <select
+                {...register('gcs.eyeResponse')}
+                value={gcs.eyeResponse || ''}
+                onChange={(e) =>
+                  setValue('gcs.eyeResponse', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">-</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Motor (M)</label>
+              <select
+                {...register('gcs.motorResponse')}
+                value={gcs.motorResponse || ''}
+                onChange={(e) =>
+                  setValue('gcs.motorResponse', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">-</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Verbal (V)</label>
+              <select
+                {...register('gcs.verbalResponse')}
+                value={gcs.verbalResponse || ''}
+                onChange={(e) =>
+                  setValue('gcs.verbalResponse', e.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true
+                  })
+                }
+                className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">-</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </div>
+          </div>
+          {calculatedValues.totalGCS !== undefined && (
+            <div className="mt-3 text-sm text-gray-800">
+              <span className="font-semibold">Total GCS:</span>{' '}
+              <span>{calculatedValues.totalGCS}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Calculated Values Display */}

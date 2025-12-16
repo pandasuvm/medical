@@ -8,7 +8,14 @@ interface FormData {
   indication: any;
   comorbidities: any;
   leonScore: any;
-  monitoring: any;
+  preInductionLabs?: any;
+  airwayStatus?: any;
+  preIntubationManagement?: any;
+  postIntubationGcs?: any;
+  ventilatorSettings?: any;
+  postIntubationEvents?: any;
+  intubationAttempts?: any[];
+  monitoring?: any;
   calculatedValues: any;
   alerts: any[];
   timestamp: Date;
@@ -46,24 +53,39 @@ export class MEARPDFGenerator {
     // Header
     this.addHeader(data.timestamp);
 
-    // Patient Demographics
+    // Patient Demographics & Financial Status
     this.addSection('Patient Demographics', [
-      `Name: ${data.demographics?.firstName || ''} ${data.demographics?.lastName || ''}`,
       `Age: ${data.demographics?.age || 'N/A'} years`,
+      `Sex: ${data.demographics?.sex || 'N/A'}`,
       `Weight: ${data.demographics?.weight || 'N/A'} kg`,
       `Height: ${data.demographics?.height || 'N/A'} cm`,
-      `Gender: ${data.demographics?.gender || 'N/A'}`,
-      `MRN: ${data.demographics?.mrn || 'N/A'}`
+      `Hospital Number: ${data.demographics?.hospitalNo || 'N/A'}`,
+      `Occupation: ${data.demographics?.occupationOther || data.demographics?.occupation || 'N/A'}`,
+      `Financial Status: ${data.demographics?.financialStatusOther || data.demographics?.financialStatus || 'N/A'}`
     ]);
 
-    // Vital Signs
-    this.addSection('Vital Signs', [
+    // Pre-induction Hemodynamics
+    this.addSection('Pre-induction Hemodynamics', [
       `Heart Rate: ${data.vitals?.heartRate || 'N/A'} bpm`,
       `Blood Pressure: ${data.vitals?.systolicBP || 'N/A'}/${data.vitals?.diastolicBP || 'N/A'} mmHg`,
       `Respiratory Rate: ${data.vitals?.respiratoryRate || 'N/A'} /min`,
       `Temperature: ${data.vitals?.temperature || 'N/A'} °C`,
       `SpO2: ${data.vitals?.spO2 || 'N/A'}%`
     ]);
+
+    // Pre-induction Lab Values
+    if (data.preInductionLabs) {
+      this.addSection('Pre-induction Lab Values', [
+        `pH: ${data.preInductionLabs.ph || 'N/A'}`,
+        `pCO2: ${data.preInductionLabs.paco2 || 'N/A'}`,
+        `HCO3: ${data.preInductionLabs.hco3 || 'N/A'}`,
+        `Lactate: ${data.preInductionLabs.lactate || 'N/A'}`,
+        `Creatinine: ${data.preInductionLabs.creatinine || 'N/A'}`,
+        `Urea: ${data.preInductionLabs.urea || 'N/A'}`,
+        `Na: ${data.preInductionLabs.na || 'N/A'}`,
+        `K: ${data.preInductionLabs.k || 'N/A'}`
+      ]);
+    }
 
     // Glasgow Coma Scale
     if (data.gcs) {
@@ -89,9 +111,18 @@ export class MEARPDFGenerator {
     // Indication for Intubation
     if (data.indication) {
       this.addSection('Indication for Intubation', [
-        `Primary Indication: ${data.indication.primary || 'N/A'}`,
-        `Secondary Indications: ${data.indication.secondary?.join(', ') || 'None'}`,
-        `Urgency Level: ${data.indication.urgency || 'N/A'}`
+        `Category: ${data.indication.category || 'N/A'}`
+      ]);
+    }
+
+    // Pre-intubation status & airway
+    if (data.airwayStatus) {
+      this.addSection('Pre-intubation Airway Status', [
+        `Failure to maintain/protect airway: ${data.airwayStatus.failureToMaintainProtectAirway ? 'Yes' : 'No'}`,
+        `Failure of ventilation/oxygenation: ${data.airwayStatus.failureOfVentilationOxygenation ? 'Yes' : 'No'}`,
+        `Deterioration anticipated: ${data.airwayStatus.deteriorationAnticipated ? 'Yes' : 'No'}`,
+        `Predictor for difficult airway: ${data.airwayStatus.predictorForDifficultAirway ? 'Yes' : 'No'}`,
+        `Safe apnea time: ${data.airwayStatus.safeApneaTime ?? 'N/A'} minutes`
       ]);
     }
 
@@ -104,13 +135,74 @@ export class MEARPDFGenerator {
       this.addSection('Comorbidities', comorbidityList.length > 0 ? comorbidityList : ['None reported']);
     }
 
+    // Pre-intubation medications & fluids
+    if (data.preIntubationManagement) {
+      const meds: string[] = [];
+      const m = data.preIntubationManagement;
+      [
+        'etomidate',
+        'propofol',
+        'ketamine',
+        'midazolam',
+        'fentanyl',
+        'succinylcholine',
+        'rocuronium',
+        'vecuronium',
+        'atracurium',
+        'cisatracurium'
+      ].forEach((key) => {
+        const entry = m[key];
+        if (entry?.given) {
+          meds.push(`${key} (${entry.dose ?? 'dose N/A'})`);
+        }
+      });
+
+      if (Array.isArray(m.otherMedications)) {
+        m.otherMedications.forEach((om: any) => {
+          if (om?.given || om?.dose || om?.name) {
+            meds.push(`${om.name || 'Other'} (${om.dose ?? 'dose N/A'})`);
+          }
+        });
+      } else if (m.otherMedication) {
+        const om = m.otherMedication;
+        if (om?.given || om?.dose || om?.name) {
+          meds.push(`${om.name || 'Other'} (${om.dose ?? 'dose N/A'})`);
+        }
+      }
+
+      this.addSection('Pre-intubation Medications & Fluids', [
+        meds.length ? `Medications: ${meds.join(', ')}` : 'Medications: None recorded',
+        `Fluids: ${
+          m.preInductionFluids
+            ? [
+                m.preInductionFluids.normalSaline ? 'Normal Saline' : null,
+                m.preInductionFluids.ringerLactate ? 'Ringer Lactate' : null,
+                m.preInductionFluids.colloids ? 'Colloids' : null
+              ].filter(Boolean).join(', ') || 'None'
+            : 'None'
+        } (Volume: ${m.preInductionFluids?.volumeMl ?? 'N/A'} mL)`,
+        m.pushDosePressor
+          ? `Push-dose pressor: ${['adrenaline','noradrenaline','phenylephrine','metaraminol']
+              .filter(k => m.pushDosePressor[k])
+              .join(', ') || 'None'} (Dose: ${m.pushDosePressor.dose ?? 'N/A'})`
+          : 'Push-dose pressor: None',
+        m.vasopressorInfusion
+          ? `Vasopressor infusion: ${m.vasopressorInfusion.agent} (${m.vasopressorInfusion.doseMcgPerKgMin ?? 'N/A'} mcg/kg/min)`
+          : 'Vasopressor infusion: None',
+        m.sedationInfusion
+          ? `Sedation infusion: ${m.sedationInfusion.agent} (${m.sedationInfusion.dose ?? 'N/A'})`
+          : 'Sedation infusion: None',
+        `Sedation done: ${m.sedationDone || 'N/A'}`
+      ]);
+    }
+
     // Calculated Values
     if (includeCalculations && data.calculatedValues) {
       this.addSection('Calculated Clinical Values', [
         `BMI: ${data.calculatedValues.bmi ? data.calculatedValues.bmi.toFixed(1) : 'N/A'} kg/m²`,
         `Shock Index: ${data.calculatedValues.shockIndex ? data.calculatedValues.shockIndex.toFixed(2) : 'N/A'}`,
-        `MAP: ${data.calculatedValues.map ? data.calculatedValues.map.toFixed(0) : 'N/A'} mmHg`,
-        `BSA: ${data.calculatedValues.bsa ? data.calculatedValues.bsa.toFixed(2) : 'N/A'} m²`
+      `MAP: ${data.calculatedValues.meanArterialPressure ? data.calculatedValues.meanArterialPressure.toFixed(0) : 'N/A'} mmHg`,
+      `Modified Shock Index: ${data.calculatedValues.modifiedShockIndex ? data.calculatedValues.modifiedShockIndex.toFixed(2) : 'N/A'}`
       ]);
     }
 
@@ -121,14 +213,43 @@ export class MEARPDFGenerator {
       );
     }
 
-    // Monitoring Plan
-    if (data.monitoring) {
-      this.addSection('Post-Intubation Monitoring', [
-        `Capnography: ${data.monitoring.capnography ? 'Yes' : 'No'}`,
-        `Arterial Line: ${data.monitoring.arterialLine ? 'Yes' : 'No'}`,
-        `Central Venous Access: ${data.monitoring.centralVenousAccess ? 'Yes' : 'No'}`,
-        `Foley Catheter: ${data.monitoring.foleyCatheter ? 'Yes' : 'No'}`
+    // Post-intubation GCS & ventilator (summary)
+    if (data.postIntubationGcs || data.ventilatorSettings) {
+      this.addSection('Post-intubation Neurology & Ventilation', [
+        data.postIntubationGcs
+          ? `GCS Post-intubation: E${data.postIntubationGcs.eye || '-'} M${data.postIntubationGcs.motor || '-'} V${data.postIntubationGcs.verbal || '-'}`
+          : 'GCS Post-intubation: N/A',
+        data.ventilatorSettings
+          ? `Ventilator: Mode ${data.ventilatorSettings.mode || 'N/A'}, PEEP ${data.ventilatorSettings.peep ?? 'N/A'}, Ppeak ${data.ventilatorSettings.pPeak ?? 'N/A'}, MV ${data.ventilatorSettings.minuteVentilation ?? 'N/A'}`
+          : 'Ventilator: N/A',
+        data.ventilatorSettings?.settingsDescription
+          ? `Ventilator settings: ${data.ventilatorSettings.settingsDescription}`
+          : 'Ventilator settings: N/A',
+        data.ventilatorSettings?.ettCdValue
+          ? `ETT/CD value: ${data.ventilatorSettings.ettCdValue}`
+          : 'ETT/CD value: N/A'
       ]);
+    }
+
+    // Post-intubation adverse events
+    if (data.postIntubationEvents) {
+      this.addSection('Post-intubation Adverse Events', [
+        `Post-intubation cardiac arrest: ${data.postIntubationEvents.postIntubationCardiacArrest ? 'Yes' : 'No'}`,
+        data.postIntubationEvents.cardiacArrestDetails
+          ? `Cardiac arrest details: ${data.postIntubationEvents.cardiacArrestDetails}`
+          : '',
+        data.postIntubationEvents.otherSeriousAdverseEvents
+          ? `Other serious events: ${data.postIntubationEvents.otherSeriousAdverseEvents}`
+          : 'Other serious events: None reported'
+      ].filter(Boolean) as string[]);
+    }
+
+    // Intubation attempts summary
+    if (data.intubationAttempts && data.intubationAttempts.length > 0) {
+      const lines = data.intubationAttempts.slice(0, 3).map((a, idx) =>
+        `Attempt ${idx + 1}: ${a.yearsExperience || 'Experience N/A'}, ${a.laryngoscopeType || 'Scope N/A'}, Blade ${a.bladeSize || 'N/A'}, Bougie/Stylet: ${a.bougieOrStyletUsed ? 'Yes' : 'No'}, ETT change: ${a.ettChanged ? 'Yes' : 'No'}`
+      );
+      this.addSection('Intubation Attempts', lines);
     }
 
     // Footer
